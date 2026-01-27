@@ -10,8 +10,6 @@ import {
 } from "recharts";
 
 type Point = { x: string; y: number };
-type UmamiResponse = { pageviews: Point[]; sessions: Point[] };
-
 function formatDate(iso: string) {
   const d = new Date(iso);
   return d.toLocaleDateString("id-ID", { day: "2-digit", month: "short" });
