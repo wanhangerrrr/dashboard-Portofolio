@@ -1,4 +1,3 @@
-import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import PortfolioAnalyticsChart from "@/components/PortfolioAnalyticsChart";
 
@@ -6,7 +5,7 @@ type Point = { x: string; y: number };
 type UmamiResponse = { pageviews: Point[]; sessions: Point[] };
 type ActiveDaysResponse = { source: "wakatime" | "github" | "none"; activeDays: number };
 
-export default function HomePage() {
+export default function DashboardPage() {
   const [umami, setUmami] = useState<UmamiResponse | null>(null);
   const [activeDays, setActiveDays] = useState<number | null>(null);
 
@@ -25,29 +24,14 @@ export default function HomePage() {
       });
   }, []);
 
+  if (!umami || activeDays === null) return <div style={{ padding: 24 }}>Loading...</div>;
+
   return (
-    <main style={{ padding: 24 }}>
-      <h1 style={{ margin: "0 0 12px" }}>Hi, I’m Hafiz</h1>
-      <p style={{ margin: "0 0 20px", color: "#64748b" }}>
-        Junior full-stack developer — selected metrics from my personal projects.
-      </p>
-
-      {!umami || activeDays === null ? (
-        <div style={{ padding: 12 }}>Loading snapshot...</div>
-      ) : (
-        <PortfolioAnalyticsChart
-          pageviews={umami.pageviews}
-          sessions={umami.sessions}
-          activeCodingDays={activeDays}
-          rangeLabel="Last 7 days (excluding today)"
-          variant="compact"
-        />
-
-      )}
-
-      <div style={{ marginTop: 14 }}>
-        <Link href="/dashboard">Open full dashboard →</Link>
-      </div>
-    </main>
+    <PortfolioAnalyticsChart
+      pageviews={umami.pageviews}
+      sessions={umami.sessions}
+      activeCodingDays={activeDays}
+      rangeLabel="Last 7 days (excluding today)"
+    />
   );
 }
