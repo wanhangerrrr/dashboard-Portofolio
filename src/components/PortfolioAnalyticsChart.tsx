@@ -1,4 +1,3 @@
-// src/components/PortfolioAnalyticsChart.tsx
 import React, { useMemo, useState } from "react";
 import {
   ResponsiveContainer,
@@ -16,8 +15,9 @@ type Props = {
   pageviews: Point[];
   sessions: Point[];
   activeCodingDays: number;
-  rangeLabel?: string; // default: "Last 7 days"
-  variant?: "full" | "compact"; // default: "full"
+  codingTimeLabel?: string;
+  rangeLabel?: string;
+  variant?: "full" | "compact";
 };
 
 function formatShortDate(iso: string) {
@@ -25,7 +25,8 @@ function formatShortDate(iso: string) {
   return d.toLocaleDateString("id-ID", { day: "2-digit", month: "short" });
 }
 
-function sumY(points: Point[]) {
+function sumY(points?: Point[]) {
+  if (!Array.isArray(points)) return 0;
   return points.reduce((acc, p) => acc + (Number.isFinite(p.y) ? p.y : 0), 0);
 }
 
@@ -37,6 +38,7 @@ export default function PortfolioAnalyticsChart({
   pageviews,
   sessions,
   activeCodingDays,
+  codingTimeLabel,
   rangeLabel = "Last 7 days",
   variant = "full",
 }: Props) {
@@ -54,13 +56,17 @@ export default function PortfolioAnalyticsChart({
     };
   }, [pageviews, sessions]);
 
-  // Merge arrays by index (cukup untuk data Umami yang biasanya align per hari).
   const chartData = useMemo(() => {
-    const len = Math.max(pageviews.length, sessions.length);
+    const pvArr = Array.isArray(pageviews) ? pageviews : [];
+    const ssArr = Array.isArray(sessions) ? sessions : [];
+
+    const len = Math.max(pvArr.length, ssArr.length);
+
     return Array.from({ length: len }).map((_, i) => {
-      const pv = pageviews[i];
-      const ss = sessions[i];
+      const pv = pvArr[i];
+      const ss = ssArr[i];
       const iso = pv?.x ?? ss?.x ?? "";
+
       return {
         iso,
         date: iso ? formatShortDate(iso) : "",
@@ -77,7 +83,7 @@ export default function PortfolioAnalyticsChart({
       padding: wrapPadding,
       color: "#0f172a",
       fontFamily:
-        'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"',
+        "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji",
     },
     header: { marginBottom: isCompact ? 10 : 14 },
     titleRow: {
@@ -89,9 +95,10 @@ export default function PortfolioAnalyticsChart({
     },
     title: { fontSize: titleSize, fontWeight: 650, margin: 0 },
     subtitle: { fontSize: 13, color: "#64748b", margin: 0 },
+
     kpis: {
       display: "grid",
-      gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+      gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
       gap: 12,
       marginTop: 14,
       marginBottom: isCompact ? 12 : 16,
@@ -106,6 +113,7 @@ export default function PortfolioAnalyticsChart({
     kpiLabel: { fontSize: 12, color: "#64748b", marginBottom: 6 },
     kpiValue: { fontSize: 20, fontWeight: 700, letterSpacing: -0.2 },
     kpiHint: { fontSize: 12, color: "#94a3b8", marginTop: 6 },
+
     chartCard: {
       background: "#ffffff",
       border: "1px solid #e2e8f0",
@@ -134,12 +142,17 @@ export default function PortfolioAnalyticsChart({
       gap: 8,
       alignItems: "center",
     },
-    dot: { width: 8, height: 8, borderRadius: 999, display: "inline-block" },
+    dot: {
+      width: 8,
+      height: 8,
+      borderRadius: 999,
+      display: "inline-block",
+    },
     footnote: { marginTop: 10, fontSize: 12, color: "#94a3b8" },
   };
 
-  const pageviewsColor = "#6366f1"; // indigo
-  const sessionsColor = "#10b981"; // emerald
+  const pageviewsColor = "#6366f1";
+  const sessionsColor = "#10b981";
 
   return (
     <section style={styles.wrap}>
@@ -149,7 +162,6 @@ export default function PortfolioAnalyticsChart({
           <p style={styles.subtitle}>{rangeLabel}</p>
         </div>
 
-        {/* Kalau compact, boleh tetap tampil 3 KPI; kalau mau lebih ringkas lagi nanti kita bisa buat 2 KPI saja */}
         <div style={styles.kpis}>
           <div style={styles.kpiCard}>
             <div style={styles.kpiLabel}>Pageviews</div>
@@ -166,6 +178,12 @@ export default function PortfolioAnalyticsChart({
           <div style={styles.kpiCard}>
             <div style={styles.kpiLabel}>Active coding days</div>
             <div style={styles.kpiValue}>{activeCodingDays}</div>
+            <div style={styles.kpiHint}>{rangeLabel}</div>
+          </div>
+
+          <div style={styles.kpiCard}>
+            <div style={styles.kpiLabel}>Coding time (7d)</div>
+            <div style={styles.kpiValue}>{codingTimeLabel ?? "—"}</div>
             <div style={styles.kpiHint}>{rangeLabel}</div>
           </div>
         </div>
@@ -205,12 +223,13 @@ export default function PortfolioAnalyticsChart({
           </div>
         </div>
 
-        {/* Penting: tinggi wrapper menentukan tinggi chart Recharts */}
         <div style={{ width: "100%", height: chartHeight }}>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+            <LineChart
+              data={chartData}
+              margin={{ top: 8, right: 12, bottom: 0, left: 0 }}
+            >
               <CartesianGrid stroke="#eef2f7" strokeDasharray="4 4" />
-
               <XAxis
                 dataKey="date"
                 tickLine={false}
@@ -218,22 +237,20 @@ export default function PortfolioAnalyticsChart({
                 tick={{ fill: "#64748b", fontSize: 12 }}
                 hide={isCompact}
               />
-
               <YAxis
                 allowDecimals={false}
                 tickLine={false}
                 axisLine={false}
                 tick={{ fill: "#64748b", fontSize: 12 }}
               />
-
-              <Tooltip
-                formatter={(value, name) => [
-                  value,
-                  name === "pageviews" ? "Pageviews" : "Sessions",
-                ]}
-                labelFormatter={(label) => `Date: ${label}`}
-              />
-
+             <Tooltip
+              formatter={(value: unknown, name: unknown) => {
+                const v = Number(value);
+                const key = String(name);
+                return [Number.isFinite(v) ? v : 0, key === "pageviews" ? "Pageviews" : "Sessions"];
+              }}
+              labelFormatter={(label) => `Date: ${String(label)}`}
+            />
               <Line
                 type="monotone"
                 dataKey="pageviews"
@@ -242,7 +259,6 @@ export default function PortfolioAnalyticsChart({
                 dot={false}
                 isAnimationActive={false}
               />
-
               {showSessions && (
                 <Line
                   type="monotone"

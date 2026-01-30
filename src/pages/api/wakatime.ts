@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const auth = Buffer.from(`${apiKey}:`).toString("base64");
 
     // "This week" (WakaTime summaries)
-    const url = "https://wakatime.com/api/v1/users/current/summaries?range=this_week";
+    const url = "https://wakatime.com/api/v1/users/current/stats/last_7_days";
 
     const r = await fetch(url, {
       headers: { Authorization: `Basic ${auth}` },

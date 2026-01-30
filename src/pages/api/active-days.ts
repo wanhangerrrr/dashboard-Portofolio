@@ -72,11 +72,9 @@ async function getActiveDaysFromWakaTime(): Promise<number> {
   const apiKey = process.env.WAKATIME_API_KEY;
   if (!apiKey) throw new Error("Missing WAKATIME_API_KEY");
 
-  // Basic auth untuk Personal API Key: base64("API_KEY:") [web:430]
   const auth = Buffer.from(`${apiKey}:`).toString("base64");
   const { start, end } = getLast7DaysFromYesterdayRange();
 
-  // summaries endpoint pakai start & end (YYYY-MM-DD) [web:430]
   const url =
     `https://wakatime.com/api/v1/users/current/summaries` +
     `?start=${toISODate(start)}&end=${toISODate(end)}`;
@@ -87,7 +85,6 @@ async function getActiveDaysFromWakaTime(): Promise<number> {
   const json = (await r.json()) as WakaTimeSummariesResponse;
   const days = json.data ?? [];
 
-  // active day = ada coding time (total_seconds > 0)
   return days.reduce((acc, day) => {
     const seconds = day.grand_total?.total_seconds ?? 0;
     return acc + (seconds > 0 ? 1 : 0);
@@ -95,7 +92,7 @@ async function getActiveDaysFromWakaTime(): Promise<number> {
 }
 
 /** =======================
- *  GitHub (fallback)
+ *  GitHub
  *  ======================= */
 async function getActiveDaysFromGitHub(): Promise<number> {
   const username = process.env.GITHUB_USERNAME;
@@ -140,8 +137,6 @@ async function getActiveDaysFromGitHub(): Promise<number> {
   if (!r.ok) throw new Error("GitHub error " + r.status);
 
   const json = (await r.json()) as GitHubGraphQLResponse;
-
-  // kalau token invalid, GitHub sering isi "errors"
   if (json.errors) throw new Error("GitHub GraphQL returned errors");
 
   const weeks = json.data?.user?.contributionsCollection?.contributionCalendar?.weeks ?? [];
@@ -151,40 +146,87 @@ async function getActiveDaysFromGitHub(): Promise<number> {
 }
 
 /** =======================
- *  API Handler
+ *  Umami (traffic days)
  *  ======================= */
+type SeriesPoint = { x: string | number; y: number };
+type UmamiPageviewsResponse = { pageviews: SeriesPoint[]; sessions: SeriesPoint[] };
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { start, end } = getLast7DaysFromYesterdayRange();
+export async function getActiveDaysFromUmami(start: Date, end: Date): Promise<number> {
+  const websiteId = process.env.UMAMI_WEBSITE_ID;
+  const apiKey = process.env.UMAMI_API_KEY;
 
-  try {
-    const activeDays = await getActiveDaysFromWakaTime();
-    if (activeDays === 0) throw new Error("WakaTime returned 0, fallback to GitHub");
+  if (!websiteId) throw new Error("Missing UMAMI_WEBSITE_ID");
+  if (!apiKey) throw new Error("Missing UMAMI_API_KEY");
 
-    return res.status(200).json({
-      source: "wakatime",
-      range: { start: toISODate(start), end: toISODate(end) },
-      activeDays,
-    });
-  } catch (e1) {
-    try {
-      const activeDays = await getActiveDaysFromGitHub();
-      return res.status(200).json({
-        source: "github",
-        range: { start: toISODate(start), end: toISODate(end) },
-        activeDays,
-      });
-    } catch (e2) {
-      return res.status(200).json({
-        source: "none",
-        range: { start: toISODate(start), end: toISODate(end) },
-        activeDays: 0,
-        debug: {
-          wakatimeError: String(e1),
-          githubError: String(e2),
-        },
-      });
-    }
-  }
+  const startAt = start.getTime();
+  const endAt = end.getTime();
+
+  const url =
+    `https://api.umami.is/v1/websites/${websiteId}/pageviews` +
+    `?startAt=${startAt}&endAt=${endAt}&unit=day&timezone=Asia/Jakarta`;
+
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+
+  if (!r.ok) throw new Error(`Umami error ${r.status}`);
+
+  const data = (await r.json()) as UmamiPageviewsResponse;
+  const series = Array.isArray(data?.pageviews) ? data.pageviews : [];
+
+  return series.reduce((acc, p) => acc + (Number(p?.y) > 0 ? 1 : 0), 0);
 }
 
+/** =======================
+ *  API Handler
+ *  ======================= */
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "GET") return res.status(405).end();
+
+  res.setHeader("Cache-Control", "no-store");
+
+  const { start, end } = getLast7DaysFromYesterdayRange();
+
+  let codingDays = 0;
+  let codingSource: "wakatime" | "github" | "none" = "none";
+  let wakatimeError: string | null = null;
+  let githubError: string | null = null;
+
+  try {
+    const w = await getActiveDaysFromWakaTime();
+    if (w > 0) {
+      codingDays = w;
+      codingSource = "wakatime";
+    } else {
+      throw new Error("WakaTime returned 0");
+    }
+  } catch (e) {
+    wakatimeError = String(e);
+    try {
+      const g = await getActiveDaysFromGitHub();
+      codingDays = g;
+      codingSource = "github";
+    } catch (e2) {
+      githubError = String(e2);
+      codingDays = 0;
+      codingSource = "none";
+    }
+  }
+
+  let umamiDays: number | null = null;
+  let umamiError: string | null = null;
+
+  try {
+    umamiDays = await getActiveDaysFromUmami(start, end);
+  } catch (e) {
+    umamiError = String(e);
+    umamiDays = null;
+  }
+
+  return res.status(200).json({
+    range: { start: toISODate(start), end: toISODate(end) },
+    coding: { source: codingSource, activeDays: codingDays },
+    traffic: { source: "umami", activeDays: umamiDays },
+    debug: { wakatimeError, githubError, umamiError },
+  });
+}

@@ -1,53 +1,15 @@
-import Link from "next/link";
-import React, { useEffect, useState } from "react";
-import PortfolioAnalyticsChart from "@/components/PortfolioAnalyticsChart";
+// src/pages/index.tsx
+import type { GetServerSideProps } from "next";
 
-type Point = { x: string; y: number };
-type UmamiResponse = { pageviews: Point[]; sessions: Point[] };
-type ActiveDaysResponse = { source: "wakatime" | "github" | "none"; activeDays: number };
+export const getServerSideProps: GetServerSideProps = async () => {
+  return {
+    redirect: {
+      destination: "/dashboard",
+      permanent: false, // temporary (307) dulu, aman untuk testing
+    },
+  };
+};
 
-export default function HomePage() {
-  const [umami, setUmami] = useState<UmamiResponse | null>(null);
-  const [activeDays, setActiveDays] = useState<number | null>(null);
-
-  useEffect(() => {
-    Promise.all([
-      fetch("/api/umami").then((r) => r.json() as Promise<UmamiResponse>),
-      fetch("/api/active-days").then((r) => r.json() as Promise<ActiveDaysResponse>),
-    ])
-      .then(([u, a]) => {
-        setUmami(u);
-        setActiveDays(a.activeDays);
-      })
-      .catch(() => {
-        setUmami(null);
-        setActiveDays(null);
-      });
-  }, []);
-
-  return (
-    <main style={{ padding: 24 }}>
-      <h1 style={{ margin: "0 0 12px" }}>Hi, I’m Hafiz</h1>
-      <p style={{ margin: "0 0 20px", color: "#64748b" }}>
-        Junior full-stack developer — selected metrics from my personal projects.
-      </p>
-
-      {!umami || activeDays === null ? (
-        <div style={{ padding: 12 }}>Loading snapshot...</div>
-      ) : (
-        <PortfolioAnalyticsChart
-          pageviews={umami.pageviews}
-          sessions={umami.sessions}
-          activeCodingDays={activeDays}
-          rangeLabel="Last 7 days (excluding today)"
-          variant="compact"
-        />
-
-      )}
-
-      <div style={{ marginTop: 14 }}>
-        <Link href="/dashboard">Open full dashboard →</Link>
-      </div>
-    </main>
-  );
+export default function HomeRedirect() {
+  return null;
 }
