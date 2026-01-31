@@ -48,6 +48,36 @@ type GithubCalendar = {
   }[];
 };
 
+type WakaTimeDaily = {
+  data: {
+    range: { date: string; start: string; end: string; text: string; timezone: string };
+    grand_total: { hours: number; minutes: number; total_seconds: number; digital: string; text: string };
+    categories: { name: string; total_seconds: number; percent: number; digital: string; text: string }[];
+    dependencies: { name: string; total_seconds: number; percent: number; digital: string; text: string }[];
+    editors: { name: string; total_seconds: number; percent: number; digital: string; text: string }[];
+    languages: { name: string; total_seconds: number; percent: number; digital: string; text: string }[];
+    machines: { name: string; total_seconds: number; percent: number; digital: string; text: string }[];
+    operating_systems: { name: string; total_seconds: number; percent: number; digital: string; text: string }[];
+    projects: { name: string; total_seconds: number; percent: number; digital: string; text: string }[];
+  }[];
+  start: string;
+  end: string;
+  cumulative_total: { seconds: number; text: string; digital: string };
+};
+
+type WakaTimeProjects = {
+  data: {
+    name: string;
+    total_seconds: number;
+    percent: number;
+    digital: string;
+    text: string;
+    color?: string;
+  }[];
+  total: number;
+  total_pages: number;
+};
+
 type TopLanguages = { [key: string]: number };
 
 function formatDuration(seconds: number) {
@@ -100,9 +130,11 @@ export default function DashboardPage() {
   const [umami, setUmami] = useState<UmamiResponse | null>(null);
   const [activeDays, setActiveDays] = useState<number | null>(null);
   const [gh, setGh] = useState<GithubCalendar | null>(null);
-  const [view, setView] = useState<"traffic" | "github" | "languages" | "kpi">("traffic");
+  const [view, setView] = useState<"traffic" | "github" | "languages" | "kpi" | "daily" | "projects">("traffic");
   const [wakaSummary, setWakaSummary] = useState<WakaTimeSummary | null>(null);
   const [topLanguages, setTopLanguages] = useState<TopLanguages | null>(null);
+  const [dailyData, setDailyData] = useState<WakaTimeDaily | null>(null);
+  const [projectsData, setProjectsData] = useState<WakaTimeProjects | null>(null);
 
 
   // Fetch all API data
@@ -113,13 +145,17 @@ export default function DashboardPage() {
       fetch("/api/github-contributions").then((r) => r.json() as Promise<GithubCalendar>),
       fetch("/api/wakatime-summary").then((r) => r.json() as Promise<WakaTimeSummary>),
       fetch("/api/top-languages").then((r) => r.json()),
+      fetch("/api/wakatime-daily").then((r) => r.json() as Promise<WakaTimeDaily>),
+      fetch("/api/wakatime-projects").then((r) => r.json() as Promise<WakaTimeProjects>),
     ])
-      .then(([u, a, g, w, langs]) => {
+      .then(([u, a, g, w, langs, daily, projects]) => {
         setUmami(u);
         setActiveDays(a.coding.activeDays);
         setGh(g);
         setWakaSummary(w);
         setTopLanguages(langs);
+        setDailyData(daily);
+        setProjectsData(projects);
       })
       .catch(() => {
         setUmami(null);
@@ -127,7 +163,38 @@ export default function DashboardPage() {
         setGh(null);
         setWakaSummary(null);
         setTopLanguages(null);
+        setDailyData(null);
+        setProjectsData(null);
       });
+  }, []);
+
+  // Polling for auto-update every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      Promise.all([
+        fetch("/api/umami").then(async (r) => (await r.json()) as UmamiResponse),
+        fetch("/api/active-days").then((r) => r.json() as Promise<ActiveDaysApiResponse>),
+        fetch("/api/github-contributions").then((r) => r.json() as Promise<GithubCalendar>),
+        fetch("/api/wakatime-summary").then((r) => r.json() as Promise<WakaTimeSummary>),
+        fetch("/api/top-languages").then((r) => r.json()),
+        fetch("/api/wakatime-daily").then((r) => r.json() as Promise<WakaTimeDaily>),
+        fetch("/api/wakatime-projects").then((r) => r.json() as Promise<WakaTimeProjects>),
+      ])
+        .then(([u, a, g, w, langs, daily, projects]) => {
+          setUmami(u);
+          setActiveDays(a.coding.activeDays);
+          setGh(g);
+          setWakaSummary(w);
+          setTopLanguages(langs);
+          setDailyData(daily);
+          setProjectsData(projects);
+        })
+        .catch(() => {
+          // Silent fail for polling
+        });
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(interval);
   }, []);
 
  // LOADING
@@ -203,6 +270,20 @@ return (
         >
           <span className={styles.navIcon}>📊</span>
           {!sidebarCollapsed && <span className={styles.navText}>KPI Summary</span>}
+        </button>
+        <button
+          className={`${styles.navItem} ${view === "daily" ? styles.active : ""}`}
+          onClick={() => setView("daily")}
+        >
+          <span className={styles.navIcon}>📅</span>
+          {!sidebarCollapsed && <span className={styles.navText}>Daily Stats</span>}
+        </button>
+        <button
+          className={`${styles.navItem} ${view === "projects" ? styles.active : ""}`}
+          onClick={() => setView("projects")}
+        >
+          <span className={styles.navIcon}>📁</span>
+          {!sidebarCollapsed && <span className={styles.navText}>Projects</span>}
         </button>
       </nav>
       <div className={styles.sidebarFooter}>
@@ -354,6 +435,41 @@ return (
                 </div>
               </div>
             </div>
+          ) : view === "daily" ? (
+            dailyData ? (
+              <div className={styles.kpiSection}>
+                <h3>Daily Coding Stats (Last 7 Days)</h3>
+                <div className={styles.kpiGrid}>
+                  {dailyData.data.map((day, index) => (
+                    <div key={index} className={styles.kpiCard}>
+                      <h4>{new Date(day.range.date).toLocaleDateString()}</h4>
+                      <div className={styles.kpiValue}>{day.grand_total.digital}</div>
+                      <p>Projects: {day.projects.length}</p>
+                      <p>Languages: {day.languages.length}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className={styles.loadingPanel}>Loading Daily Stats…</div>
+            )
+          ) : view === "projects" ? (
+            projectsData ? (
+              <div className={styles.kpiSection}>
+                <h3>Top Projects</h3>
+                <div className={styles.kpiGrid}>
+                  {projectsData.data.slice(0, 8).map((project, index) => (
+                    <div key={index} className={styles.kpiCard}>
+                      <h4>{project.name}</h4>
+                      <div className={styles.kpiValue}>{project.digital}</div>
+                      <p>{project.percent.toFixed(1)}%</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className={styles.loadingPanel}>Loading Projects…</div>
+            )
           ) : null}
         </section>
       </div>
