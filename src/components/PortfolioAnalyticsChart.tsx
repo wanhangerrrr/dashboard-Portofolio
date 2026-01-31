@@ -18,6 +18,10 @@ type Props = {
   codingTimeLabel?: string;
   rangeLabel?: string;
   variant?: "full" | "compact";
+  // Optional previous period values for comparison
+  previousPageviews?: number;
+  previousSessions?: number;
+  previousActiveDays?: number;
 };
 
 function formatShortDate(iso: string) {
@@ -34,6 +38,16 @@ function formatCompact(n: number) {
   return new Intl.NumberFormat("id-ID", { notation: "compact" }).format(n);
 }
 
+function calculateTrend(current: number, previous?: number): { percent: number; direction: "up" | "down" | "neutral"; show: boolean } {
+  if (previous === undefined || previous === 0) {
+    return { percent: 0, direction: "neutral", show: false };
+  }
+  const change = ((current - previous) / previous) * 100;
+  if (change > 0) return { percent: Math.round(change), direction: "up", show: true };
+  if (change < 0) return { percent: Math.abs(Math.round(change)), direction: "down", show: true };
+  return { percent: 0, direction: "neutral", show: true };
+}
+
 export default function PortfolioAnalyticsChart({
   pageviews,
   sessions,
@@ -41,12 +55,23 @@ export default function PortfolioAnalyticsChart({
   codingTimeLabel,
   rangeLabel = "Last 7 days",
   variant = "full",
+  previousPageviews,
+  previousSessions,
+  previousActiveDays,
 }: Props) {
   const isCompact = variant === "compact";
   const [showSessions, setShowSessions] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
-  const chartHeight = isCompact ? 220 : 320;
-  const wrapPadding = isCompact ? 16 : 24;
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const chartHeight = isMobile ? 200 : (isCompact ? 220 : 320);
+  const wrapPadding = isMobile ? 12 : (isCompact ? 16 : 24);
   const titleSize = isCompact ? 16 : 18;
 
   const totals = useMemo(() => {
@@ -98,7 +123,7 @@ export default function PortfolioAnalyticsChart({
 
     kpis: {
       display: "grid",
-      gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+      gridTemplateColumns: isMobile ? "1fr" : "repeat(4, minmax(0, 1fr))",
       gap: 12,
       marginTop: 14,
       marginBottom: isCompact ? 12 : 16,
@@ -113,6 +138,24 @@ export default function PortfolioAnalyticsChart({
     kpiLabel: { fontSize: 12, color: "#64748b", marginBottom: 6 },
     kpiValue: { fontSize: 20, fontWeight: 700, letterSpacing: -0.2 },
     kpiHint: { fontSize: 12, color: "#94a3b8", marginTop: 6 },
+    kpiTrend: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 4,
+      fontSize: 11,
+      fontWeight: 600,
+      padding: "3px 8px",
+      borderRadius: 12,
+      marginLeft: 6,
+    },
+    trendUp: {
+      background: "rgba(16, 185, 129, 0.1)",
+      color: "#10b981",
+    },
+    trendDown: {
+      background: "rgba(239, 68, 68, 0.1)",
+      color: "#ef4444",
+    },
 
     chartCard: {
       background: "#ffffff",
@@ -122,8 +165,9 @@ export default function PortfolioAnalyticsChart({
     },
     chartTop: {
       display: "flex",
+      flexDirection: isMobile ? "column" : "row",
       justifyContent: "space-between",
-      alignItems: "center",
+      alignItems: isMobile ? "flex-start" : "center",
       gap: 12,
       flexWrap: "wrap",
       marginBottom: 10,
@@ -154,35 +198,56 @@ export default function PortfolioAnalyticsChart({
   const pageviewsColor = "#6366f1";
   const sessionsColor = "#10b981";
 
+  // Calculate trends
+  const pageviewsTrend = calculateTrend(totals.pageviews, previousPageviews);
+  const sessionsTrend = calculateTrend(totals.sessions, previousSessions);
+  const activeDaysTrend = calculateTrend(activeCodingDays, previousActiveDays);
+
+  const renderTrend = (trend: ReturnType<typeof calculateTrend>) => {
+    if (!trend.show) return null;
+    const isUp = trend.direction === "up";
+    const trendStyle = isUp ? styles.trendUp : styles.trendDown;
+    const arrow = isUp ? "↑" : "↓";
+    return (
+      <span style={{ ...styles.kpiTrend, ...trendStyle }}>
+        {arrow} {trend.percent}%
+      </span>
+    );
+  };
+
   return (
     <section style={styles.wrap}>
       <header style={styles.header}>
-        <div style={styles.titleRow}>
-          <h2 style={styles.title}>Analytics Snapshot</h2>
-          <p style={styles.subtitle}>{rangeLabel}</p>
-        </div>
-
         <div style={styles.kpis}>
           <div style={styles.kpiCard}>
-            <div style={styles.kpiLabel}>Pageviews</div>
-            <div style={styles.kpiValue}>{formatCompact(totals.pageviews)}</div>
+            <div style={styles.kpiLabel}>Jumlah Tampilan</div>
+            <div style={styles.kpiValue}>
+              {formatCompact(totals.pageviews)}
+              {renderTrend(pageviewsTrend)}
+            </div>
             <div style={styles.kpiHint}>{rangeLabel}</div>
           </div>
 
           <div style={styles.kpiCard}>
-            <div style={styles.kpiLabel}>Sessions</div>
-            <div style={styles.kpiValue}>{formatCompact(totals.sessions)}</div>
+            <div style={styles.kpiLabel}>Sesi Kunjungan</div>
+            <div style={styles.kpiValue}>
+              {formatCompact(totals.sessions)}
+              {renderTrend(sessionsTrend)}
+            </div>
             <div style={styles.kpiHint}>{rangeLabel}</div>
           </div>
 
           <div style={styles.kpiCard}>
-            <div style={styles.kpiLabel}>Active coding days</div>
-            <div style={styles.kpiValue}>{activeCodingDays}</div>
+            <div style={styles.kpiLabel}>Hari Aktif Coding</div>
+            <div style={styles.kpiValue}>
+              {activeCodingDays}
+              {renderTrend(activeDaysTrend)}
+            </div>
             <div style={styles.kpiHint}>{rangeLabel}</div>
           </div>
 
           <div style={styles.kpiCard}>
-            <div style={styles.kpiLabel}>Coding time (7d)</div>
+            <div style={styles.kpiLabel}>Waktu Coding</div>
             <div style={styles.kpiValue}>{codingTimeLabel ?? "—"}</div>
             <div style={styles.kpiHint}>{rangeLabel}</div>
           </div>
@@ -196,7 +261,7 @@ export default function PortfolioAnalyticsChart({
           <div style={styles.chips} aria-label="Series toggle">
             <span style={{ ...styles.chip, cursor: "default" }}>
               <span style={{ ...styles.dot, background: pageviewsColor }} />
-              Pageviews
+              Jumlah Tampilan
             </span>
 
             <button
@@ -243,14 +308,14 @@ export default function PortfolioAnalyticsChart({
                 axisLine={false}
                 tick={{ fill: "#64748b", fontSize: 12 }}
               />
-             <Tooltip
-              formatter={(value: unknown, name: unknown) => {
-                const v = Number(value);
-                const key = String(name);
-                return [Number.isFinite(v) ? v : 0, key === "pageviews" ? "Pageviews" : "Sessions"];
-              }}
-              labelFormatter={(label) => `Date: ${String(label)}`}
-            />
+              <Tooltip
+                formatter={(value: unknown, name: unknown) => {
+                  const v = Number(value);
+                  const key = String(name);
+                  return [Number.isFinite(v) ? v : 0, key === "pageviews" ? "Pageviews" : "Sessions"];
+                }}
+                labelFormatter={(label) => `Date: ${String(label)}`}
+              />
               <Line
                 type="monotone"
                 dataKey="pageviews"

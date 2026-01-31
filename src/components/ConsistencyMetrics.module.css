@@ -1,0 +1,112 @@
+/* Consistency Metrics Styles */
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md, 24px);
+    padding: var(--spacing-lg, 32px);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary, #f1f5f9);
+    margin: 0;
+}
+
+/* Streaks Grid */
+.streaksGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-md, 24px);
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: var(--spacing-sm, 16px);
+    }
+
+    .title {
+        font-size: 20px;
+    }
+
+    .streaksGrid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .streakCard {
+        padding: 24px;
+    }
+
+    .streakValue {
+        font-size: 2.5rem;
+    }
+}
+
+/* Streak Card */
+.streakCard {
+    background: var(--bg-secondary, #0f1623);
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+    border-radius: var(--border-radius, 12px);
+    padding: var(--spacing-lg, 32px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-soft, 0 4px 12px rgba(0, 0, 0, 0.3));
+}
+
+.streakCard:hover {
+    background: var(--bg-tertiary, #111c2e);
+    border-color: var(--accent, #3b82f6);
+    box-shadow: var(--shadow-lg, 0 10px 25px rgba(0, 0, 0, 0.4));
+    transform: translateY(-2px);
+}
+
+.streakEmoji {
+    font-size: 40px;
+    margin-bottom: 8px;
+}
+
+.streakValue {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--accent, #3b82f6);
+    line-height: 1;
+}
+
+.streakLabel {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary, #f1f5f9);
+    margin-top: 8px;
+}
+
+.streakUnit {
+    font-size: 12px;
+    color: var(--text-muted, #64748b);
+}
+
+/* Motivational Message */
+.messageCard {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(239, 68, 68, 0.08));
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    border-radius: var(--border-radius, 12px);
+    padding: var(--spacing-md, 24px);
+    text-align: center;
+}
+
+.messageText {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-primary, #f1f5f9);
+    line-height: 1.5;
+}

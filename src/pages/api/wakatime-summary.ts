@@ -1,15 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-type WakaEmbedLanguage = {
-  name?: string;
-  percent?: number;
-};
-
 type WakaEmbedDay = {
-  date?: string; // "2026-01-05"
+  date?: string;
   range?: { start?: string; end?: string };
   grand_total?: { total_seconds?: number; digital?: string };
-  languages?: WakaEmbedLanguage[]; // <-- tambahan
+};
+
+type WakaApiLanguage = {
+  name: string;
+  total_seconds: number;
+  percent: number;
 };
 
 type WakaTimeSummary = {
@@ -23,74 +23,108 @@ type WakaTimeSummary = {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") return res.status(405).end();
 
-  const url = process.env.WAKATIME_EMBED_URL;
-  if (!url) return res.status(500).json({ error: "Missing WAKATIME_EMBED_URL" });
+  const embedUrl = process.env.WAKATIME_EMBED_URL;
+  const apiKey = process.env.WAKATIME_API_KEY;
 
-  const r = await fetch(url);
-  const text = await r.text();
-
-  if (!r.ok) {
-    return res
-      .status(r.status)
-      .json({ error: "WakaTime embed request failed", detail: text });
+  if (!embedUrl && !apiKey) {
+    return res.status(500).json({ error: "Missing WAKATIME_EMBED_URL or WAKATIME_API_KEY" });
   }
 
-  let raw: unknown;
   try {
-    raw = JSON.parse(text);
-  } catch {
-    // Kalau bukan JSON, tetap kembalikan raw string supaya gampang debug
-    return res.status(200).json({ raw: text });
-  }
+    let totalSeconds = 0;
+    let startDate: string | null = null;
+    let endDate: string | null = null;
+    let best: { date: string; seconds: number; digital: string } | null = null;
+    let topLanguages: { name: string; percent: number }[] = [];
 
-  // Bentuk embed biasanya { data: [...] }
-  const obj = raw as { data?: unknown };
-  const days: WakaEmbedDay[] = Array.isArray(obj.data) ? (obj.data as WakaEmbedDay[]) : [];
+    // Fetch from embed URL for basic stats
+    if (embedUrl) {
+      const r = await fetch(embedUrl);
+      if (r.ok) {
+        const json = await r.json();
+        const days: WakaEmbedDay[] = Array.isArray(json.data) ? json.data : [];
 
-  const totalSeconds = days.reduce((sum, d) => sum + (d?.grand_total?.total_seconds ?? 0), 0);
+        totalSeconds = days.reduce((sum, d) => sum + (d?.grand_total?.total_seconds ?? 0), 0);
+        startDate = days[0]?.range?.start ?? null;
+        endDate = days[days.length - 1]?.range?.end ?? null;
 
-  // average daily berdasarkan 7 hari terakhir (bagi 7, bukan active days)
-  const averageDailySeconds = Math.round(totalSeconds / 7);
+        // Best day
+        for (const d of days) {
+          const sec = d?.grand_total?.total_seconds ?? 0;
+          if (sec <= 0) continue;
 
-  // Best day (hari dengan total_seconds terbesar)
-  let best: { date: string; seconds: number; digital: string } | null = null;
-  for (const d of days) {
-    const sec = d?.grand_total?.total_seconds ?? 0;
-    if (sec <= 0) continue;
+          const candidate = {
+            date: d?.date ?? "",
+            seconds: sec,
+            digital: d?.grand_total?.digital ?? "",
+          };
 
-    const candidate = {
-      date: d?.date ?? "",
-      seconds: sec,
-      digital: d?.grand_total?.digital ?? "",
+          if (!best || candidate.seconds > best.seconds) best = candidate;
+        }
+      }
+    }
+
+    // Fetch languages from API key (embed URL doesn't have languages data)
+    if (apiKey) {
+      const apiUrl = "https://wakatime.com/api/v1/users/current/summaries?range=last_7_days";
+      const apiResponse = await fetch(apiUrl, {
+        headers: {
+          Authorization: `Basic ${Buffer.from(apiKey).toString("base64")}`,
+        },
+      });
+
+      if (apiResponse.ok) {
+        const apiJson = await apiResponse.json();
+        const days = Array.isArray(apiJson.data) ? apiJson.data : [];
+
+        // Aggregate languages across all days
+        const languageMap = new Map<string, number>();
+
+        for (const day of days) {
+          const languages = Array.isArray(day?.languages) ? day.languages : [];
+          for (const lang of languages) {
+            if (lang?.name) {
+              const existing = languageMap.get(lang.name) || 0;
+              languageMap.set(lang.name, existing + (lang.total_seconds || 0));
+            }
+          }
+        }
+
+        // Calculate percentages
+        const totalLangSeconds = Array.from(languageMap.values()).reduce((a, b) => a + b, 0);
+
+        topLanguages = Array.from(languageMap.entries())
+          .map(([name, seconds]) => ({
+            name,
+            percent: totalLangSeconds > 0 ? (seconds / totalLangSeconds) * 100 : 0,
+          }))
+          .sort((a, b) => b.percent - a.percent)
+          .slice(0, 6);
+
+        // If we didn't get data from embed, use API data for totals
+        if (totalSeconds === 0) {
+          totalSeconds = days.reduce(
+            (sum: number, d: { grand_total?: { total_seconds?: number } }) =>
+              sum + (d?.grand_total?.total_seconds ?? 0),
+            0
+          );
+        }
+      }
+    }
+
+    // Average daily (7 days)
+    const averageDailySeconds = Math.round(totalSeconds / 7);
+
+    const out: WakaTimeSummary = {
+      range: { startDate, endDate },
+      total: { seconds: totalSeconds },
+      averageDaily: { seconds: averageDailySeconds },
+      bestDay: best,
+      topLanguages,
     };
 
-    if (!best || candidate.seconds > best.seconds) best = candidate;
+    return res.status(200).json(out);
+  } catch (e: unknown) {
+    return res.status(500).json({ error: "Server error", detail: String(e) });
   }
-
-  const startDate = days[0]?.range?.start ?? null;
-  const endDate = days[days.length - 1]?.range?.end ?? null;
-
-  // Ambil languages dari hari terakhir yang punya languages (paling aman)
-  const lastWithLanguages = [...days]
-    .reverse()
-    .find((d) => Array.isArray(d.languages) && d.languages.length > 0);
-
-  const topLanguages =
-    lastWithLanguages?.languages
-      ?.filter((l) => typeof l?.name === "string" && l.name.trim().length > 0)
-      .slice(0, 5)
-      .map((l) => ({
-        name: String(l.name),
-        percent: Number(l.percent ?? 0),
-      })) ?? [];
-
-  const out: WakaTimeSummary = {
-    range: { startDate, endDate },
-    total: { seconds: totalSeconds },
-    averageDaily: { seconds: averageDailySeconds },
-    bestDay: best,
-    topLanguages,
-  };
-
-  return res.status(200).json(out);
 }
