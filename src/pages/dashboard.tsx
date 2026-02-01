@@ -364,7 +364,7 @@ export default function DashboardPage() {
               {sidebarCollapsed ? "☰" : "✕"}
             </button>
 
-            <div className={styles.mobileTitle}>Dashboard ku</div>
+            <div className={styles.mobileTitle}>Dashboard Saya</div>
 
             <div className={styles.navbarHeader}>
               <h1 className={styles.navbarTitle}>I’m Hafiz</h1>
@@ -533,10 +533,10 @@ export default function DashboardPage() {
                 </div>
 
                 {gaSummary && (
-                  <div className={styles.ga4Section} style={{ marginTop: '20px' }}>
+                  <div className={styles.ga4Section}>
                     <div className={styles.sectionHeader}>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <h3 className={styles.sectionTitle} style={{ fontSize: '1.25rem' }}>GA4 Real-time Insights</h3>
+                      <div className={styles.headerColumn}>
+                        <h3 className={styles.sectionTitleSmall}>GA4 Real-time Insights</h3>
                         <p className={styles.sectionDescription}>
                           Data audiens dari Google Analytics 4. Digunakan untuk melacak pengguna aktif dan metrik sesi yang lebih mendalam secara real-time.
                         </p>

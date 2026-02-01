@@ -447,6 +447,23 @@
   margin-bottom: var(--spacing-xl);
 }
 
+.ga4Section {
+  margin-top: 32px;
+  width: 100%;
+}
+
+.headerColumn {
+  display: flex;
+  flex-direction: column;
+}
+
+.sectionTitleSmall {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
 /* ===== GRIDS ===== */
 .statsGrid {
   display: grid;
