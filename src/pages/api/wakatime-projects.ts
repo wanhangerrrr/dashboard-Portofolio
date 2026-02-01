@@ -14,6 +14,9 @@ type WakaTimeProjectsResponse = {
   total_pages: number;
 };
 
+const cache: Record<string, { data: any; timestamp: number }> = {};
+const CACHE_TTL = 10 * 60 * 1000;
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") return res.status(405).end();
 
@@ -24,8 +27,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    const { range } = req.query;
+    const wakaRange = range === "30D" ? "last_30_days" : range === "90D" ? "last_6_months" : range === "all" ? "all_time" : "last_7_days";
+
+    const cacheKey = `projects-${wakaRange}`;
+    if (cache[cacheKey] && Date.now() - cache[cacheKey].timestamp < CACHE_TTL) {
+      return res.status(200).json(cache[cacheKey].data);
+    }
+
     // Use summaries endpoint which includes project breakdown
-    const url = "https://wakatime.com/api/v1/users/current/summaries?range=last_7_days";
+    const url = `https://wakatime.com/api/v1/users/current/summaries?range=${wakaRange}`;
     const response = await fetch(url, {
       headers: {
         Authorization: `Basic ${Buffer.from(apiKey).toString("base64")}`,
@@ -80,6 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       total_pages: 1,
     };
 
+    cache[cacheKey] = { data: result, timestamp: Date.now() };
     return res.status(200).json(result);
   } catch (e: unknown) {
     return res.status(500).json({ error: "Server error", detail: String(e) });

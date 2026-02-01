@@ -20,6 +20,9 @@ type WakaTimeSummary = {
   topLanguages: { name: string; percent: number }[];
 };
 
+const cache: Record<string, { data: any; timestamp: number }> = {};
+const CACHE_TTL = 10 * 60 * 1000;
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") return res.status(405).end();
 
@@ -31,6 +34,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    const { range } = req.query;
+    const wakaRange = range === "30D" ? "last_30_days" : range === "90D" ? "last_6_months" : range === "all" ? "all_time" : "last_7_days";
+    const daysCount = range === "30D" ? 30 : range === "90D" ? 180 : range === "all" ? 365 : 7;
+
+    const cacheKey = `summary-${wakaRange}`;
+    if (cache[cacheKey] && Date.now() - cache[cacheKey].timestamp < CACHE_TTL) {
+      return res.status(200).json(cache[cacheKey].data);
+    }
+
     let totalSeconds = 0;
     let startDate: string | null = null;
     let endDate: string | null = null;
@@ -38,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let topLanguages: { name: string; percent: number }[] = [];
 
     // Fetch from embed URL for basic stats
-    if (embedUrl) {
+    if (embedUrl && range !== "30D" && range !== "90D" && range !== "all") {
       const r = await fetch(embedUrl);
       if (r.ok) {
         const json = await r.json();
@@ -66,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Fetch languages from API key (embed URL doesn't have languages data)
     if (apiKey) {
-      const apiUrl = "https://wakatime.com/api/v1/users/current/summaries?range=last_7_days";
+      const apiUrl = `https://wakatime.com/api/v1/users/current/summaries?range=${wakaRange}`;
       const apiResponse = await fetch(apiUrl, {
         headers: {
           Authorization: `Basic ${Buffer.from(apiKey).toString("base64")}`,
@@ -112,8 +124,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // Average daily (7 days)
-    const averageDailySeconds = Math.round(totalSeconds / 7);
+    // Average daily
+    const averageDailySeconds = Math.round(totalSeconds / daysCount);
 
     const out: WakaTimeSummary = {
       range: { startDate, endDate },
@@ -123,6 +135,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       topLanguages,
     };
 
+    cache[cacheKey] = { data: out, timestamp: Date.now() };
     return res.status(200).json(out);
   } catch (e: unknown) {
     return res.status(500).json({ error: "Server error", detail: String(e) });

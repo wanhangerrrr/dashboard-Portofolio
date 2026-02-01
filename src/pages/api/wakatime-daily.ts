@@ -7,7 +7,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!apiKey) return res.status(500).json({ error: "Missing WAKATIME_API_KEY" });
 
   try {
-    const url = "https://wakatime.com/api/v1/users/current/summaries?range=last_7_days";
+    const { range } = req.query;
+    const wakaRange = range === "30D" ? "last_30_days" : range === "90D" ? "last_6_months" : range === "all" ? "all_time" : "last_7_days";
+    const url = `https://wakatime.com/api/v1/users/current/summaries?range=${wakaRange}`;
     const response = await fetch(url, {
       headers: {
         Authorization: `Basic ${Buffer.from(apiKey).toString("base64")}`,

@@ -7,7 +7,11 @@ type UmamiStats = {
   bounces: number;
   totaltime: number;
 };
-type UmamiTrendPoint = { x: string | number; y: number };
+type UmamiTrendPoint = { x: string; y: number };
+type UmamiTrendResponse = {
+  pageviews: UmamiTrendPoint[];
+  sessions: UmamiTrendPoint[];
+};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const apiKey = process.env.UMAMI_API_KEY; // Bearer token
@@ -16,8 +20,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!apiKey) return res.status(500).json({ error: "Missing UMAMI_API_KEY" });
   if (!websiteId) return res.status(500).json({ error: "Missing UMAMI_WEBSITE_ID" });
 
+  const { range } = req.query;
+  const days = range === "30D" ? 30 : range === "90D" ? 90 : range === "all" ? 365 : 7;
+
   const endAt = Date.now();
-  const startAt = endAt - 7 * 24 * 60 * 60 * 1000;
+  const startAt = endAt - days * 24 * 60 * 60 * 1000;
 
   const base = `https://api.umami.is/v1/websites/${websiteId}`;
   const headers = { Authorization: `Bearer ${apiKey}` };
@@ -38,41 +45,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const statsText = await statsRes.text();
   const trendText = await trendRes.text();
 
-  let statsJson: UmamiStats;
-  let trendJson: UmamiTrendPoint[];
-
-    try {
-    statsJson = JSON.parse(statsText) as UmamiStats;
-    } catch {
-    return res.status(statsRes.status).send(statsText);
-    }
-
-    try {
-    trendJson = JSON.parse(trendText) as UmamiTrendPoint[];
-    } catch {
-    return res.status(trendRes.status).send(trendText);
-    }
-
-    const totals = {
+  const statsJson = JSON.parse(statsText) as UmamiStats;
+  const totals = {
     pageviews: statsJson.pageviews ?? 0,
     visitors: statsJson.visitors ?? 0,
     visits: statsJson.visits ?? 0,
     bounces: statsJson.bounces ?? 0,
     totaltime: statsJson.totaltime ?? 0,
-    };
+  };
 
-  // Bounce rate sederhana: bounces / visits
   const bounceRate = totals.visits > 0 ? totals.bounces / totals.visits : 0;
-
-  // Rata-rata durasi per session (detik): totaltime / visits
   const avgTimeSeconds = totals.visits > 0 ? totals.totaltime / totals.visits : 0;
+
+  const trendData = JSON.parse(trendText);
+  let pageviews: UmamiTrendPoint[] = [];
+  let sessionsDaily: UmamiTrendPoint[] = [];
+
+  if (Array.isArray(trendData)) {
+    pageviews = trendData;
+  } else if (trendData && typeof trendData === "object") {
+    pageviews = trendData.pageviews || [];
+    sessionsDaily = trendData.sessions || [];
+  }
 
   return res.status(200).json({
     range: { startAt, endAt },
     totals,
     bounceRate,
     avgTimeSeconds,
-    trend: trendJson,
+    trend: { pageviews, sessions: sessionsDaily },
   });
 }
- 

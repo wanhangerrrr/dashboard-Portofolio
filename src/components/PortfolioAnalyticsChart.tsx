@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from "react";
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
   CartesianGrid,
+  ReferenceLine,
 } from "recharts";
 
 type Point = { x: string; y: number };
@@ -14,10 +15,12 @@ type Point = { x: string; y: number };
 type Props = {
   pageviews: Point[];
   sessions: Point[];
+  codingData?: Point[]; // New: Coding time trend
   activeCodingDays: number;
   codingTimeLabel?: string;
   rangeLabel?: string;
   variant?: "full" | "compact";
+  events?: { date: string; label: string }[];
   // Optional previous period values for comparison
   previousPageviews?: number;
   previousSessions?: number;
@@ -51,16 +54,20 @@ function calculateTrend(current: number, previous?: number): { percent: number; 
 export default function PortfolioAnalyticsChart({
   pageviews,
   sessions,
+  codingData,
   activeCodingDays,
   codingTimeLabel,
   rangeLabel = "Last 7 days",
   variant = "full",
+  events,
   previousPageviews,
   previousSessions,
   previousActiveDays,
 }: Props) {
   const isCompact = variant === "compact";
+  const [showViews, setShowViews] = useState(true);
   const [showSessions, setShowSessions] = useState(false);
+  const [showCoding, setShowCoding] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   React.useEffect(() => {
@@ -84,31 +91,38 @@ export default function PortfolioAnalyticsChart({
   const chartData = useMemo(() => {
     const pvArr = Array.isArray(pageviews) ? pageviews : [];
     const ssArr = Array.isArray(sessions) ? sessions : [];
+    const cdArr = Array.isArray(codingData) ? codingData : [];
 
-    const len = Math.max(pvArr.length, ssArr.length);
+    const normalizeDate = (d: string) => d?.split(' ')[0] || d;
 
-    return Array.from({ length: len }).map((_, i) => {
-      const pv = pvArr[i];
-      const ss = ssArr[i];
-      const iso = pv?.x ?? ss?.x ?? "";
+    const pvMap = new Map(pvArr.map(p => [normalizeDate(p.x), p.y]));
+    const ssMap = new Map(ssArr.map(p => [normalizeDate(p.x), p.y]));
+    const cdMap = new Map(cdArr.map(p => [normalizeDate(p.x), p.y]));
 
+    const dates = new Set([
+      ...pvArr.map(p => normalizeDate(p.x)),
+      ...ssArr.map(p => normalizeDate(p.x)),
+      ...cdArr.map(p => normalizeDate(p.x))
+    ]);
+
+    return Array.from(dates).sort().map(iso => {
       return {
         iso,
         date: iso ? formatShortDate(iso) : "",
-        pageviews: pv?.y ?? 0,
-        sessions: ss?.y ?? 0,
+        pageviews: pvMap.get(iso) ?? 0,
+        sessions: ssMap.get(iso) ?? 0,
+        codingTime: cdMap.get(iso) ? Math.round((cdMap.get(iso) || 0) / 60) : 0, // minutes
       };
     });
-  }, [pageviews, sessions]);
+  }, [pageviews, sessions, codingData]);
 
   const styles: Record<string, React.CSSProperties> = {
     wrap: {
       maxWidth: 980,
       margin: "0 auto",
       padding: wrapPadding,
-      color: "#0f172a",
-      fontFamily:
-        "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji",
+      color: "var(--text-primary)",
+      fontFamily: "var(--font-family, sans-serif)",
     },
     header: { marginBottom: isCompact ? 10 : 14 },
     titleRow: {
@@ -118,8 +132,8 @@ export default function PortfolioAnalyticsChart({
       gap: 12,
       flexWrap: "wrap",
     },
-    title: { fontSize: titleSize, fontWeight: 650, margin: 0 },
-    subtitle: { fontSize: 13, color: "#64748b", margin: 0 },
+    title: { fontSize: titleSize, fontWeight: 700, margin: 0, color: "var(--text-primary)" },
+    subtitle: { fontSize: 13, color: "var(--text-secondary)", margin: 0 },
 
     kpis: {
       display: "grid",
@@ -129,39 +143,40 @@ export default function PortfolioAnalyticsChart({
       marginBottom: isCompact ? 12 : 16,
     },
     kpiCard: {
-      background: "#ffffff",
-      border: "1px solid #e2e8f0",
-      borderRadius: 12,
+      background: "var(--bg-secondary)",
+      border: "1px solid var(--border-subtle)",
+      borderRadius: "var(--border-radius)",
       padding: 14,
-      boxShadow: "0 1px 0 rgba(15, 23, 42, 0.04)",
+      boxShadow: "var(--shadow-soft)",
     },
-    kpiLabel: { fontSize: 12, color: "#64748b", marginBottom: 6 },
-    kpiValue: { fontSize: 20, fontWeight: 700, letterSpacing: -0.2 },
-    kpiHint: { fontSize: 12, color: "#94a3b8", marginTop: 6 },
+    kpiLabel: { fontSize: 12, color: "var(--text-secondary)", marginBottom: 6, fontWeight: 500 },
+    kpiValue: { fontSize: 20, fontWeight: 800, letterSpacing: -0.2, color: "var(--text-primary)" },
+    kpiHint: { fontSize: 12, color: "var(--text-muted)", marginTop: 6 },
     kpiTrend: {
       display: "inline-flex",
       alignItems: "center",
       gap: 4,
       fontSize: 11,
-      fontWeight: 600,
+      fontWeight: 700,
       padding: "3px 8px",
       borderRadius: 12,
       marginLeft: 6,
     },
     trendUp: {
-      background: "rgba(16, 185, 129, 0.1)",
+      background: "rgba(16, 185, 129, 0.15)",
       color: "#10b981",
     },
     trendDown: {
-      background: "rgba(239, 68, 68, 0.1)",
+      background: "rgba(239, 68, 68, 0.15)",
       color: "#ef4444",
     },
 
     chartCard: {
-      background: "#ffffff",
-      border: "1px solid #e2e8f0",
-      borderRadius: 12,
-      padding: 14,
+      background: "var(--bg-secondary)",
+      border: "1px solid var(--border-subtle)",
+      borderRadius: "var(--border-radius)",
+      padding: 16,
+      boxShadow: "var(--shadow-soft)",
     },
     chartTop: {
       display: "flex",
@@ -170,33 +185,38 @@ export default function PortfolioAnalyticsChart({
       alignItems: isMobile ? "flex-start" : "center",
       gap: 12,
       flexWrap: "wrap",
-      marginBottom: 10,
+      marginBottom: 16,
     },
-    chartLabel: { fontSize: 13, color: "#0f172a", fontWeight: 600 },
-    chips: { display: "flex", gap: 8 },
+    chartLabel: { fontSize: 14, color: "var(--text-primary)", fontWeight: 700 },
+    chips: { display: "flex", gap: 8, flexWrap: "wrap" },
     chip: {
-      borderRadius: 999,
-      border: "1px solid #e2e8f0",
-      background: "#f8fafc",
-      padding: "6px 10px",
-      fontSize: 12,
+      borderRadius: 10,
+      border: "1px solid var(--border-subtle)",
+      background: "var(--bg-tertiary)",
+      padding: "8px 12px",
+      fontSize: 13,
+      fontWeight: 600,
       cursor: "pointer",
       userSelect: "none",
       display: "inline-flex",
       gap: 8,
       alignItems: "center",
+      transition: "all 0.2s ease",
+      outline: "none",
+      color: "var(--text-primary)",
     },
     dot: {
-      width: 8,
-      height: 8,
+      width: 10,
+      height: 10,
       borderRadius: 999,
       display: "inline-block",
     },
-    footnote: { marginTop: 10, fontSize: 12, color: "#94a3b8" },
+    footnote: { marginTop: 12, fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" },
   };
 
   const pageviewsColor = "#6366f1";
   const sessionsColor = "#10b981";
+  const codingColor = "#f59e0b";
 
   // Calculate trends
   const pageviewsTrend = calculateTrend(totals.pageviews, previousPageviews);
@@ -259,82 +279,152 @@ export default function PortfolioAnalyticsChart({
           <div style={styles.chartLabel}>Traffic trend</div>
 
           <div style={styles.chips} aria-label="Series toggle">
-            <span style={{ ...styles.chip, cursor: "default" }}>
-              <span style={{ ...styles.dot, background: pageviewsColor }} />
-              Jumlah Tampilan
-            </span>
+            <button
+              type="button"
+              onClick={() => setShowViews((v) => !v)}
+              style={{
+                ...styles.chip,
+                background: showViews ? "var(--bg-hover)" : "var(--bg-secondary)",
+                borderColor: showViews ? pageviewsColor : "var(--border-subtle)",
+                color: showViews ? "var(--text-primary)" : "var(--text-secondary)",
+                boxShadow: showViews ? `0 0 8px ${pageviewsColor}44` : "none",
+              }}
+              aria-pressed={showViews}
+            >
+              <span style={{ ...styles.dot, background: pageviewsColor, opacity: showViews ? 1 : 0.4 }} />
+              Views
+            </button>
 
             <button
               type="button"
               onClick={() => setShowSessions((v) => !v)}
               style={{
                 ...styles.chip,
-                background: showSessions ? "#ecfdf5" : "#f8fafc",
-                borderColor: showSessions ? "#a7f3d0" : "#e2e8f0",
+                background: showSessions ? "var(--bg-hover)" : "var(--bg-secondary)",
+                borderColor: showSessions ? sessionsColor : "var(--border-subtle)",
+                color: showSessions ? "var(--text-primary)" : "var(--text-secondary)",
+                boxShadow: showSessions ? `0 0 8px ${sessionsColor}44` : "none",
               }}
               aria-pressed={showSessions}
-              title="Toggle sessions"
             >
-              <span
-                style={{
-                  ...styles.dot,
-                  background: sessionsColor,
-                  opacity: showSessions ? 1 : 0.35,
-                }}
-              />
+              <span style={{ ...styles.dot, background: sessionsColor, opacity: showSessions ? 1 : 0.4 }} />
               Sessions
-              <span style={{ color: "#64748b" }}>{showSessions ? "ON" : "OFF"}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowCoding((v) => !v)}
+              style={{
+                ...styles.chip,
+                background: showCoding ? "var(--bg-hover)" : "var(--bg-secondary)",
+                borderColor: showCoding ? codingColor : "var(--border-subtle)",
+                color: showCoding ? "var(--text-primary)" : "var(--text-secondary)",
+                boxShadow: showCoding ? `0 0 8px ${codingColor}44` : "none",
+              }}
+              aria-pressed={showCoding}
+            >
+              <span style={{ ...styles.dot, background: codingColor, opacity: showCoding ? 1 : 0.4 }} />
+              Coding
             </button>
           </div>
         </div>
 
         <div style={{ width: "100%", height: chartHeight }}>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart
+            <AreaChart
               data={chartData}
               margin={{ top: 8, right: 12, bottom: 0, left: 0 }}
             >
-              <CartesianGrid stroke="#eef2f7" strokeDasharray="4 4" />
+              <defs>
+                <linearGradient id="colorPv" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={pageviewsColor} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={pageviewsColor} stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="colorSs" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={sessionsColor} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={sessionsColor} stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="colorCd" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={codingColor} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={codingColor} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="4 4" vertical={false} />
               <XAxis
                 dataKey="date"
                 tickLine={false}
                 axisLine={false}
-                tick={{ fill: "#64748b", fontSize: 12 }}
+                tick={{ fill: "var(--text-muted)", fontSize: 12 }}
                 hide={isCompact}
               />
               <YAxis
                 allowDecimals={false}
                 tickLine={false}
                 axisLine={false}
-                tick={{ fill: "#64748b", fontSize: 12 }}
+                tick={{ fill: "var(--text-muted)", fontSize: 12 }}
               />
               <Tooltip
-                formatter={(value: unknown, name: unknown) => {
-                  const v = Number(value);
-                  const key = String(name);
-                  return [Number.isFinite(v) ? v : 0, key === "pageviews" ? "Pageviews" : "Sessions"];
+                contentStyle={{
+                  borderRadius: "12px",
+                  border: "1px solid var(--border-subtle)",
+                  boxShadow: "var(--shadow-lg)",
+                  background: "var(--bg-secondary)",
+                  color: "var(--text-primary)"
                 }}
-                labelFormatter={(label) => `Date: ${String(label)}`}
+                itemStyle={{ color: "var(--text-primary)" }}
+                formatter={(value: unknown, name?: string) => {
+                  const v = Number(value);
+                  const labels: Record<string, string> = {
+                    pageviews: "Pageviews",
+                    sessions: "Sessions",
+                    codingTime: "Coding (min)"
+                  };
+                  return [v, labels[name || ""] || (name || "")];
+                }}
               />
-              <Line
-                type="monotone"
-                dataKey="pageviews"
-                stroke={pageviewsColor}
-                strokeWidth={2.5}
-                dot={false}
-                isAnimationActive={false}
-              />
+              {events?.map((ev, i) => (
+                <ReferenceLine
+                  key={i}
+                  x={formatShortDate(ev.date)}
+                  stroke="var(--text-muted)"
+                  strokeDasharray="3 3"
+                  label={{ position: "top", value: ev.label, fill: "var(--text-muted)", fontSize: 10 }}
+                />
+              ))}
+              {showViews && (
+                <Area
+                  type="monotone"
+                  dataKey="pageviews"
+                  stroke={pageviewsColor}
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#colorPv)"
+                  isAnimationActive={true}
+                />
+              )}
               {showSessions && (
-                <Line
+                <Area
                   type="monotone"
                   dataKey="sessions"
                   stroke={sessionsColor}
-                  strokeWidth={2.5}
-                  dot={false}
-                  isAnimationActive={false}
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#colorSs)"
+                  isAnimationActive={true}
                 />
               )}
-            </LineChart>
+              {showCoding && (
+                <Area
+                  type="monotone"
+                  dataKey="codingTime"
+                  stroke={codingColor}
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#colorCd)"
+                  isAnimationActive={true}
+                />
+              )}
+            </AreaChart>
           </ResponsiveContainer>
         </div>
 
