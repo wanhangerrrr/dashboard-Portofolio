@@ -1,5 +1,4 @@
 import React from "react";
-import styles from "./TechStackActivity.module.css";
 
 type Language = {
     name: string;
@@ -24,7 +23,7 @@ const LANGUAGE_COLORS: Record<string, string> = {
     Swift: "#F05138",
     Kotlin: "#A97BFF",
     HTML: "#e34c26",
-    CSS: "#563d7c", // Changed to Purple-ish to differentiate from TS
+    CSS: "#563d7c",
     SCSS: "#c6538c",
     Vue: "#41b883",
     React: "#61dafb",
@@ -38,68 +37,68 @@ const LANGUAGE_COLORS: Record<string, string> = {
 };
 
 const COLOR_PALETTE = [
-    "#10b981", // Emerald
-    "#3b82f6", // Blue
-    "#f59e0b", // Amber
-    "#ef4444", // Red
-    "#8b5cf6", // Violet
-    "#ec4899", // Pink
-    "#06b6d4", // Cyan
-    "#f97316", // Orange
+    "#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4", "#f97316",
 ];
 
 function getLanguageColor(name: string, index: number): string {
-    if (LANGUAGE_COLORS[name]) return LANGUAGE_COLORS[name];
-    // Fallback to palette based on index
-    return COLOR_PALETTE[index % COLOR_PALETTE.length];
+    return LANGUAGE_COLORS[name] || COLOR_PALETTE[index % COLOR_PALETTE.length];
 }
 
 export default function TechStackActivity({ languages }: TechStackActivityProps) {
-    // Sort by percent descending and take top 6
     const sortedLanguages = [...languages]
         .sort((a, b) => b.percent - a.percent)
         .slice(0, 6);
 
     if (sortedLanguages.length === 0) {
         return (
-            <div className={styles.container}>
-                <div className={styles.header}>
-                    <h2 className={styles.title}>🛠️ Aktivitas Tech Stack</h2>
-                    <span className={styles.subtitle}>Minggu ini</span>
-                </div>
-                <div className={styles.emptyState}>
-                    <div className={styles.emptyIcon}>📊</div>
-                    <div className={styles.emptyMessage}>Belum ada data bahasa</div>
-                    <div className={styles.emptyHint}>Mulai coding untuk melihat aktivitas tech stack Anda.</div>
-                </div>
+            <div className="flex flex-col items-center justify-center p-8 text-center bg-zinc-900/50 rounded-2xl border border-white/5 h-full min-h-[300px]">
+                <div className="text-4xl mb-4 opacity-50">📊</div>
+                <div className="text-zinc-400 font-medium mb-1">No data available</div>
+                <div className="text-zinc-600 text-xs">Start coding to see your stats here.</div>
             </div>
         );
     }
 
     return (
-        <div className={styles.container}>
-            <div className={styles.header}>
-                <h2 className={styles.title}>🛠️ Aktivitas Tech Stack</h2>
-                <span className={styles.subtitle}>Minggu ini</span>
+        <div className="h-full flex flex-col">
+            {/* Header - Matches the uploaded image style */}
+            <div className="mb-6">
+                <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xl">🛠️</span>
+                    <h2 className="text-lg font-black text-white leading-tight">
+                        Tech Stack
+                    </h2>
+                </div>
+                <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider ml-8">
+                    Activities &bull; This Week
+                </span>
             </div>
 
-            <div className={styles.languagesList}>
+            <div className="space-y-5">
                 {sortedLanguages.map((lang, index) => {
                     const color = getLanguageColor(lang.name, index);
                     return (
-                        <div key={lang.name} className={styles.languageItem}>
-                            <div className={styles.languageInfo}>
-                                <div className={styles.languageRank}>#{index + 1}</div>
-                                <div
-                                    className={styles.languageDot}
-                                    style={{ backgroundColor: color }}
-                                />
-                                <span className={styles.languageName}>{lang.name}</span>
-                                <span className={styles.languagePercent}>{lang.percent.toFixed(1)}%</span>
+                        <div key={lang.name} className="group">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-xs font-bold text-zinc-600 w-4">#{index + 1}</span>
+                                    <div
+                                        className="w-2.5 h-2.5 rounded-full shadow-sm"
+                                        style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}40` }}
+                                    />
+                                    <span className="text-sm font-bold text-zinc-200 group-hover:text-white transition-colors">
+                                        {lang.name}
+                                    </span>
+                                </div>
+                                <span className="text-xs font-bold text-zinc-400">
+                                    {lang.percent.toFixed(1)}%
+                                </span>
                             </div>
-                            <div className={styles.progressContainer}>
+
+                            {/* Progress Bar */}
+                            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                                 <div
-                                    className={styles.progressBar}
+                                    className="h-full rounded-full transition-all duration-500 ease-out"
                                     style={{
                                         width: `${Math.min(lang.percent, 100)}%`,
                                         backgroundColor: color,
@@ -111,11 +110,9 @@ export default function TechStackActivity({ languages }: TechStackActivityProps)
                 })}
             </div>
 
-            <div className={styles.legend}>
-                <div className={styles.legendItem}>
-                    <span className={styles.legendLabel}>Total bahasa:</span>
-                    <span className={styles.legendValue}>{languages.length}</span>
-                </div>
+            <div className="mt-auto pt-6 border-t border-white/5 flex justify-between text-xs text-zinc-500">
+                <span>Total Languages</span>
+                <span className="font-bold text-zinc-300">{languages.length}</span>
             </div>
         </div>
     );

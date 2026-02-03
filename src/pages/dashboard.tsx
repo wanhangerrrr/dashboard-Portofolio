@@ -4,8 +4,16 @@ import PortfolioAnalyticsChart from "../components/PortfolioAnalyticsChart";
 import GithubContributionsHeatmap from "../components/GithubContributionsHeatmap";
 import WeeklySummary from "../components/WeeklySummary";
 import TechStackActivity from "../components/TechStackActivity";
-import ConsistencyMetrics from "../components/ConsistencyMetrics";
-import styles from "./dashboard.module.css";
+import LayoutShell from "../components/layout/LayoutShell";
+import TopHeader from "../components/layout/TopHeader";
+import DashboardGrid from "../components/dashboard/DashboardGrid";
+import DashboardCard from "../components/dashboard/DashboardCard";
+import MetricCard from "../components/dashboard/MetricCard";
+import TimeRangeSelector from "../components/dashboard/TimeRangeSelector";
+import InsightList from "../components/dashboard/InsightList";
+import DailyStatsGrid from "../components/dashboard/DailyStatsGrid";
+import ProjectsList from "../components/dashboard/ProjectsList";
+// import styles from "./dashboard.module.css";
 import { generateInsights, Insight } from "../lib/InsightEngine";
 
 type Point = { x: string; y: number };
@@ -114,56 +122,18 @@ export default function DashboardPage() {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
-  // Sidebar
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth <= 900;
-      setIsMobile(mobile);
-      if (mobile) {
-        setSidebarCollapsed(true); // Default collapsed di mobile
-      } else {
-        setSidebarCollapsed(false); // Default expanded di desktop
-      }
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Lock body scroll when mobile sidebar is open
-  useEffect(() => {
-    if (isMobile && !sidebarCollapsed) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isMobile, sidebarCollapsed]);
-
-  const handleNavClick = (newView: typeof view) => {
-    setView(newView);
-    if (isMobile) {
-      setSidebarCollapsed(true);
-    }
-  };
-
   const [timeRange, setTimeRange] = useState<"7D" | "30D" | "90D" | "all">("7D");
 
   // Data states
   const [umami, setUmami] = useState<UmamiResponse | null>(null);
   const [activeDays, setActiveDays] = useState<number | null>(null);
   const [gh, setGh] = useState<GithubCalendar | null>(null);
-  const [view, setView] = useState<"traffic" | "github" | "languages" | "kpi" | "daily" | "projects" | "weekly" | "techstack" | "consistency">("traffic");
   const [wakaSummary, setWakaSummary] = useState<WakaTimeSummary | null>(null);
   const [topLanguages, setTopLanguages] = useState<TopLanguages | null>(null);
   const [dailyData, setDailyData] = useState<WakaTimeDaily | null>(null);
   const [projectsData, setProjectsData] = useState<WakaTimeProjects | null>(null);
   const [gaSummary, setGaSummary] = useState<any>(null);
+
 
   // Fetch all API data
   useEffect(() => {
@@ -237,19 +207,19 @@ export default function DashboardPage() {
   // Removed strict check on all APIs to allow partial data rendering
   if (!umami && activeDays === null && !wakaSummary) {
     return (
-      <main className={styles.page}>
-        <header className={styles.navbar}>
-          <div className={styles.navbarContent}>
-            <h1 className={styles.navbarTitle}>I’m Hafiz</h1>
-            <p className={styles.navbarSubtitle}>
+      <main className="min-h-screen bg-zinc-950 text-white selection:bg-blue-500/30 font-sans">
+        <header className="fixed top-0 left-0 right-0 z-40 bg-zinc-950/80 backdrop-blur-md border-b border-white/5 h-16 flex items-center px-6">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">I’m Hafiz</h1>
+            <p className="text-xs text-zinc-500">
               Personal engineering dashboard & activity insights
             </p>
           </div>
         </header>
 
-        <div className={styles.mainContent}>
-          <div className={styles.container}>
-            <div className={styles.loadingPanel}>Loading guyss..</div>
+        <div className="pt-24 px-6 pb-12 max-w-[1600px] mx-auto">
+          <div className="flex items-center justify-center min-h-[50vh]">
+            <div className="text-zinc-500 font-medium animate-pulse">Loading guyss..</div>
           </div>
         </div>
       </main>
@@ -258,419 +228,135 @@ export default function DashboardPage() {
 
   // MAIN
   return (
-    <div className={styles.dashboardLayout}>
-      <aside className={`${styles.sidebar} ${sidebarCollapsed ? styles.collapsed : ""}`}>
-        <div className={styles.sidebarHeader}>
-          <h2 className={styles.sidebarTitle}>Dashboard</h2>
-          <button
-            className={`${styles.collapseButton} ${sidebarCollapsed ? styles.arrowRight : styles.arrowLeft}`}
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          >
-            {sidebarCollapsed ? "→" : "←"}
-          </button>
+    <LayoutShell>
+      {/* <TopHeader> removed to use custom grid header */}
+
+      <DashboardGrid>
+        {/* ROW 1: HEADER SECTION (MATCHING TESLA STYLE) */}
+        <div className="lg:col-span-12 flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+          <div>
+            <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
+              <span className="md:hidden flex items-center gap-3">
+                <img
+                  src="/hafiz21.jpeg"
+                  alt="Hafiz"
+                  className="w-10 h-10 rounded-full border-2 border-white/10 shadow-lg"
+                />
+                Hafiz Reports
+              </span>
+              <span className="hidden md:inline">Laporan</span>
+            </h2>
+          </div>
+          <TimeRangeSelector currentRange={timeRange} onRangeChange={setTimeRange} />
         </div>
-        <nav className={styles.sidebarNav}>
-          <button
-            className={`${styles.navItem} ${view === "traffic" ? styles.active : ""}`}
-            onClick={() => handleNavClick("traffic")}
-          >
-            <span className={styles.navIcon}></span>
-            {!sidebarCollapsed && <span className={styles.navText}>Traffic Trend</span>}
-          </button>
-          <button
-            className={`${styles.navItem} ${view === "github" ? styles.active : ""}`}
-            onClick={() => handleNavClick("github")}
-          >
-            <span className={styles.navIcon}></span>
-            {!sidebarCollapsed && <span className={styles.navText}>GitHub Contributions</span>}
-          </button>
-          <button
-            className={`${styles.navItem} ${view === "languages" ? styles.active : ""}`}
-            onClick={() => handleNavClick("languages")}
-          >
-            <span className={styles.navIcon}></span>
-            {!sidebarCollapsed && <span className={styles.navText}>Top Languages</span>}
-          </button>
-          <button
-            className={`${styles.navItem} ${view === "kpi" ? styles.active : ""}`}
-            onClick={() => handleNavClick("kpi")}
-          >
-            <span className={styles.navIcon}></span>
-            {!sidebarCollapsed && <span className={styles.navText}>KPI Summary</span>}
-          </button>
-          <button
-            className={`${styles.navItem} ${view === "daily" ? styles.active : ""}`}
-            onClick={() => handleNavClick("daily")}
-          >
-            <span className={styles.navIcon}></span>
-            {!sidebarCollapsed && <span className={styles.navText}>Daily Stats</span>}
-          </button>
-          <button
-            className={`${styles.navItem} ${view === "projects" ? styles.active : ""}`}
-            onClick={() => handleNavClick("projects")}
-          >
-            <span className={styles.navIcon}></span>
-            {!sidebarCollapsed && <span className={styles.navText}>Projects</span>}
-          </button>
-          <button
-            className={`${styles.navItem} ${view === "weekly" ? styles.active : ""}`}
-            onClick={() => handleNavClick("weekly")}
-          >
-            <span className={styles.navIcon}></span>
-            {!sidebarCollapsed && <span className={styles.navText}>Weekly Summary</span>}
-          </button>
-          <button
-            className={`${styles.navItem} ${view === "techstack" ? styles.active : ""}`}
-            onClick={() => handleNavClick("techstack")}
-          >
-            <span className={styles.navIcon}></span>
-            {!sidebarCollapsed && <span className={styles.navText}>Tech Stack</span>}
-          </button>
-          <button
-            className={`${styles.navItem} ${view === "consistency" ? styles.active : ""}`}
-            onClick={() => handleNavClick("consistency")}
-          >
-            <span className={styles.navIcon}></span>
-            {!sidebarCollapsed && <span className={styles.navText}>Consistency</span>}
-          </button>
-        </nav>
-        <div className={styles.sidebarFooter}>
-          <button
-            type="button"
-            className={styles.themeButton}
-            onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
-          >
-            {sidebarCollapsed ? (theme === "dark" ? "☀" : "🌙") : `Theme: ${theme}`}
-          </button>
-        </div>
-      </aside>
 
-      {/* Mobile Overlay */}
-      {!sidebarCollapsed && isMobile && (
-        <div
-          className={styles.mobileOverlay}
-          onClick={() => setSidebarCollapsed(true)}
-        />
-      )}
+        {/* ROW 2: PRIMARY GRID (LEFT KPIs + RIGHT CHART) */}
+        <div className="lg:col-span-12 grid grid-cols-1 lg:grid-cols-4 gap-5">
+          {/* LEFT: STACKED KPIs */}
+          <div className="lg:col-span-1 grid grid-cols-1 gap-5">
+            <MetricCard label="Pengunjung" value={visitors} trend="+12%" />
+            <MetricCard label="Sesi" value={umami?.totals?.visits ?? 0} trend="+5%" />
+            <MetricCard label="Hari Coding" value={activeDays ?? 0} trend="+2" />
+          </div>
 
-      <main className={styles.mainContent}>
-        <header className={styles.navbar}>
-          <div className={styles.navbarContent}>
-            <button
-              className={styles.mobileMenuButton}
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              aria-label="Toggle menu"
-            >
-              {sidebarCollapsed ? "☰" : "✕"}
-            </button>
-
-            <div className={styles.mobileTitle}>Dashboard Saya</div>
-
-            <div className={styles.navbarHeader}>
-              <h1 className={styles.navbarTitle}>I’m Hafiz</h1>
-              <p className={styles.navbarSubtitle}>
-                Data Engineer — selected metrics from my personal projects.
-              </p>
+          {/* RIGHT: LARGE CHART */}
+          <DashboardCard id="traffic" title="Aktivitas" className="lg:col-span-3">
+            <div className="h-[430px]">
+              <PortfolioAnalyticsChart
+                pageviews={umami?.trend?.pageviews ?? []}
+                sessions={umami?.trend?.sessions ?? []}
+                codingData={dailyData?.data?.map(d => ({ x: d.range?.date, y: d.grand_total?.total_seconds ?? 0 })) ?? []}
+              />
             </div>
-          </div>
-        </header>
-
-        <div className={styles.container}>
-          <div className={styles.contentGrid}>
-            {view === "traffic" ? (
-              <div className={styles.chartContainer}>
-                <div className={styles.chartHeaderWithSelector}>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <h3 className={styles.sectionTitle}>Traffic Trend</h3>
-                    <p className={styles.sectionDescription}>
-                      Visualisasi jumlah kunjungan (Pageviews) dan sesi unik pengunjung dari waktu ke waktu. Gunakan toggle di kanan untuk mengganti rentang waktu.
-                    </p>
-                  </div>
-                  <div className={styles.timeRangeSelector}>
-                    {(["7D", "30D", "90D", "all"] as const).map((r) => (
-                      <button
-                        key={r}
-                        className={`${styles.rangeButton} ${timeRange === r ? styles.rangeActive : ""}`}
-                        onClick={() => setTimeRange(r)}
-                      >
-                        {r}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <PortfolioAnalyticsChart
-                  pageviews={umami?.trend?.pageviews ?? []}
-                  sessions={umami?.trend?.sessions ?? []}
-                  codingData={dailyData?.data?.map(d => ({ x: d.range?.date, y: d.grand_total?.total_seconds ?? 0 })) ?? []}
-                  activeCodingDays={activeDays ?? 0}
-                  codingTimeLabel={formatHours(wakaSummary?.total?.seconds ?? 0)}
-                  rangeLabel={timeRange === '7D' ? "7 days" : timeRange === '30D' ? "30 days" : "Custom"}
-                  events={[]}
-                />
-              </div>
-            ) : view === "github" ? (
-              gh ? (
-                <div className={styles.chartContainer}>
-                  <h3>GitHub Contributions</h3>
-                  <GithubContributionsHeatmap
-                    totalContributions={gh.totalContributions}
-                    weeks={gh.weeks}
-                  />
-                </div>
-              ) : (
-                <div className={styles.loadingPanel}>Loading GitHub…</div>
-              )
-            ) : view === "languages" ? (
-              topLanguages ? (
-                <div className={styles.chartContainer}>
-                  <h3>Top Languages</h3>
-                  <ResponsiveContainer width="100%" height={400}>
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => percent ? `${name} ${(percent * 100).toFixed(0)}%` : name}
-                        outerRadius={120}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <div className={styles.loadingPanel}>Loading Languages…</div>
-              )
-            ) : view === "kpi" ? (
-              <div className={styles.sectionWrapper}>
-                <div className={styles.sectionHeader}>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <h2 className={styles.sectionTitle}>KPI Summary</h2>
-                    <p className={styles.sectionDescription}>
-                      Analisis performa website berdasarkan data Umami. Membantu memahami keterlibatan pengunjung dan efektivitas konten secara umum.
-                    </p>
-                  </div>
-                </div>
-
-                {insights.length > 0 && (
-                  <div className={styles.insightsList}>
-                    {insights.map((insight, i) => (
-                      <div key={i} className={`${styles.insightCard} ${styles[insight.type]}`}>
-                        <span className={styles.insightIcon}>
-                          {insight.type === 'positive' ? '🚀' : insight.type === 'negative' ? '⚠️' : '💡'}
-                        </span>
-                        {insight.text}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className={styles.kpiGrid}>
-                  <div className={styles.statCard}>
-                    <div className={styles.statCardTitle}>Visitors</div>
-                    <div className={styles.statCardValue}>{visitors}</div>
-                    <ResponsiveContainer width="100%" height={100}>
-                      <PieChart>
-                        <Pie
-                          data={[
-                            { name: 'Visitors', value: visitors, fill: '#0088FE' },
-                            { name: 'Target', value: Math.max(0, 1000 - visitors), fill: '#E5E7EB' }
-                          ]}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={25}
-                          outerRadius={40}
-                          dataKey="value"
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className={styles.statCard}>
-                    <div className={styles.statCardTitle}>Bounce Rate</div>
-                    <div className={styles.statCardValue}>{bounceRatePct}%</div>
-                    <ResponsiveContainer width="100%" height={100}>
-                      <PieChart>
-                        <Pie
-                          data={[
-                            { name: 'Bounce', value: bounceRatePct, fill: '#FF8042' },
-                            { name: 'Stay', value: 100 - bounceRatePct, fill: '#E5E7EB' }
-                          ]}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={25}
-                          outerRadius={40}
-                          dataKey="value"
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className={styles.statCard}>
-                    <div className={styles.statCardTitle}>Avg Time</div>
-                    <div className={styles.statCardValue}>{formatDuration(avgTimeSec)}</div>
-                    <ResponsiveContainer width="100%" height={100}>
-                      <PieChart>
-                        <Pie
-                          data={[
-                            { name: 'Current', value: avgTimeSec, fill: '#00C49F' },
-                            { name: 'Target', value: Math.max(0, 120 - avgTimeSec), fill: '#E5E7EB' }
-                          ]}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={25}
-                          outerRadius={40}
-                          dataKey="value"
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {gaSummary && (
-                  <div className={styles.ga4Section}>
-                    <div className={styles.sectionHeader}>
-                      <div className={styles.headerColumn}>
-                        <h3 className={styles.sectionTitleSmall}>GA4 Real-time Insights</h3>
-                        <p className={styles.sectionDescription}>
-                          Data audiens dari Google Analytics 4. Digunakan untuk melacak pengguna aktif dan metrik sesi yang lebih mendalam secara real-time.
-                        </p>
-                      </div>
-                    </div>
-                    <div className={styles.kpiGrid}>
-                      <div className={styles.statCard}>
-                        <div className={styles.statCardTitle}>GA4 Active Users</div>
-                        <div className={styles.statCardValue}>{gaSummary.activeUsers || 0}</div>
-                        <div className={styles.statCardChips}>
-                          <span className={styles.statCardChip}>Views: {gaSummary.screenPageViews || 0}</span>
-                          <span className={styles.statCardChip}>Sessions: {gaSummary.sessions || 0}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : view === "daily" ? (
-              <div className={styles.sectionWrapper}>
-                <div className={styles.sectionHeader}>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <h2 className={styles.sectionTitle}>Daily Coding Stats</h2>
-                    <p className={styles.sectionDescription}>
-                      Ringkasan durasi coding harian yang tercatat melalui WakaTime. Berguna untuk melacak tren dan konsistensi waktu produktif kamu.
-                    </p>
-                  </div>
-                  <div className={styles.sectionActions}>
-                    {/* Optional filter dropdown placeholder */}
-                    <select className={styles.select}>
-                      <option>Last 7 Days</option>
-                      <option>Last 30 Days</option>
-                    </select>
-                  </div>
-                </div>
-                {dailyData && dailyData.data && dailyData.data.length > 0 ? (
-                  <div className={styles.statsGrid}>
-                    {dailyData.data.map((day, index) => (
-                      <div key={index} className={styles.statCard}>
-                        <div className={styles.statCardTitle}>
-                          {day?.range?.date ? new Date(day.range.date).toLocaleDateString() : 'Unknown'}
-                        </div>
-                        <div className={styles.statCardValue}>
-                          {day?.grand_total?.digital || '0h'}
-                        </div>
-                        <div className={styles.statCardChips}>
-                          <span className={styles.statCardChip}>
-                            Projects: {day?.projects?.length || 0}
-                          </span>
-                          <span className={styles.statCardChip}>
-                            Languages: {day?.languages?.length || 0}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className={styles.loadingPanel}>Loading Daily Stats…</div>
-                )}
-              </div>
-            ) : view === "projects" ? (
-              <div className={styles.sectionWrapper}>
-                <div className={styles.sectionHeader}>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <h2 className={styles.sectionTitle}>Top Projects</h2>
-                    <p className={styles.sectionDescription}>
-                      Daftar proyek yang paling banyak memakan waktu coding. Membantu melihat fokus pengembangan software saat ini.
-                    </p>
-                  </div>
-                </div>
-                {projectsData && projectsData.data && projectsData.data.length > 0 ? (
-                  <div className={styles.projectsGrid}>
-                    {projectsData.data.slice(0, 8).map((project, index) => {
-                      const isTopProject = index === 0;
-                      const isActive = (project?.total_seconds ?? 0) > 0;
-                      return (
-                        <div
-                          key={index}
-                          className={`${styles.projectCard} ${isTopProject ? styles.projectCardHighlight : ''}`}
-                        >
-                          <div className={styles.projectHeader}>
-                            <div className={styles.projectName}>
-                              {isTopProject && <span className={styles.topBadge}> Top</span>}
-                              {project?.name || 'Unknown'}
-                            </div>
-                            <div className={`${styles.projectBadge} ${isActive ? '' : styles.badgeInactive}`}>
-                              {isActive ? 'Active' : 'Inactive'}
-                            </div>
-                          </div>
-                          <div className={styles.projectHours}>{project?.digital || '0h'}</div>
-                          <div className={styles.projectProgress}>
-                            <div
-                              className={styles.projectProgressBar}
-                              style={{ width: `${project?.percent || 0}%` }}
-                            ></div>
-                          </div>
-                          <div className={styles.projectSubtext}>
-                            {project?.percent ? `${project.percent.toFixed(1)}% of total time` : 'No data'}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className={styles.emptyState}>
-                    <div className={styles.emptyIcon}>📊</div>
-                    <div className={styles.emptyMessage}>No Projects Found</div>
-                    <div className={styles.emptyHint}>Start coding to see your top projects here.</div>
-                  </div>
-                )}
-              </div>
-            ) : view === "weekly" ? (
-              <div className={styles.sectionWrapper}>
-                <WeeklySummary
-                  totalSeconds={wakaSummary?.total?.seconds ?? 0}
-                  activeDays={activeDays ?? 0}
-                />
-              </div>
-            ) : view === "techstack" ? (
-              <div className={styles.sectionWrapper}>
-                <TechStackActivity
-                  languages={wakaSummary?.topLanguages ?? []}
-                />
-              </div>
-            ) : view === "consistency" ? (
-              <div className={styles.sectionWrapper}>
-                <ConsistencyMetrics
-                  dailyData={dailyData}
-                />
-              </div>
-            ) : null}
-          </div>
+          </DashboardCard>
         </div>
-      </main>
-    </div>
+
+        {/* ROW 3: SECONDARY CONTENT */}
+        <DashboardCard id="github" title="Kontribusi GitHub" className="lg:col-span-6">
+          {gh ? (
+            <GithubContributionsHeatmap
+              totalContributions={gh.totalContributions}
+              weeks={gh.weeks}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-40 text-zinc-500 font-medium">Loading GitHub…</div>
+          )}
+        </DashboardCard>
+
+        <DashboardCard id="daily" title="Rincian Harian" className="lg:col-span-6">
+          <DailyStatsGrid data={dailyData} />
+        </DashboardCard>
+
+        {/* ROW 4: PROJECTS, LANGUAGES & TECH */}
+        <DashboardCard id="projects" title="Proyek Teratas" className="lg:col-span-6">
+          <ProjectsList data={projectsData} />
+        </DashboardCard>
+
+        <DashboardCard id="languages" title="Bahasa Teratas" className="lg:col-span-3">
+          {topLanguages ? (
+            <div className="flex flex-col items-center">
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => (percent ?? 0) > 0.1 ? `${name}` : ""}
+                    outerRadius={80}
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+              <p className="mt-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{topLangLabel}</p>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-40 text-zinc-500 font-medium">Loading Languages…</div>
+          )}
+        </DashboardCard>
+
+        <DashboardCard id="tech" className="lg:col-span-3">
+          <TechStackActivity languages={wakaSummary?.topLanguages ?? []} />
+        </DashboardCard>
+
+        {/* ROW 5: INSIGHTS & WEEKLY */}
+        <DashboardCard id="kpi-summary" title="KPI Ringkasan" className="lg:col-span-4 max-h-[500px] overflow-y-auto scrollbar-hide">
+          <InsightList insights={insights} />
+          {gaSummary && (
+            <div className="mt-8 pt-8 border-t border-white/5">
+              <h4 className="text-[10px] font-bold text-zinc-500 uppercase mb-4 tracking-widest">Real-time</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                  <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1">Aktif</p>
+                  <p className="text-xl font-black text-white">{gaSummary.activeUsers || 0}</p>
+                </div>
+                <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                  <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1">Views</p>
+                  <p className="text-xl font-black text-white">{gaSummary.screenPageViews || 0}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </DashboardCard>
+
+        <DashboardCard id="weekly" title="Ringkasan Mingguan" className="lg:col-span-8">
+          <WeeklySummary
+            totalSeconds={wakaSummary?.total?.seconds ?? 0}
+            activeDays={activeDays ?? 0}
+          />
+        </DashboardCard>
+      </DashboardGrid>
+
+
+      {/* Footer / Context */}
+      <footer className="p-8 pb-32 text-center text-zinc-600 border-t border-white/5">
+        <p className="text-xs font-medium">© 2026 Muhammad Hafiz Fassya. All rights reserved.</p>
+      </footer>
+    </LayoutShell>
   );
 }
