@@ -123,7 +123,11 @@ export default function Sidebar({ items, isOpen, setIsOpen }: SidebarProps) {
                     {/* Sidebar Footer */}
                     <div className="mt-auto px-4 py-6 border-t border-white/5">
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-zinc-800" />
+                            <img
+                                src="/hafiz21.jpeg"
+                                alt="Hafiz"
+                                className="w-8 h-8 rounded-full border border-white/10 object-cover"
+                            />
                             <div className="text-xs">
                                 <p className="font-bold text-zinc-300">Hafiz</p>
                                 <p className="text-zinc-500">Data Engineer</p>

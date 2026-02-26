@@ -17,7 +17,7 @@ export default function ProjectsList({ data }: ProjectsListProps) {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-7">
             {data.data.slice(0, 5).map((project, i) => (
                 <div key={i} className="space-y-2 group">
                     <div className="flex justify-between items-end">

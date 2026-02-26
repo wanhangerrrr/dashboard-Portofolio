@@ -16,21 +16,23 @@ export default function InsightList({ insights }: InsightListProps) {
     }
 
     return (
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
             {insights.map((insight, i) => (
                 <div
                     key={i}
-                    className={`flex items-start gap-4 p-4 rounded-2xl border transition-all ${insight.type === 'positive'
-                            ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-400'
-                            : insight.type === 'negative'
-                                ? 'bg-rose-500/5 border-rose-500/10 text-rose-400'
-                                : 'bg-white/5 border-white/5 text-zinc-400'
+                    className={`flex items-start gap-4 p-5 rounded-2xl border transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] cursor-default shadow-sm group ${insight.type === 'positive'
+                        ? 'bg-gradient-to-br from-emerald-500/[0.04] to-emerald-500/[0.01] border-emerald-500/10 hover:border-emerald-500/30 text-emerald-400/90'
+                        : insight.type === 'negative'
+                            ? 'bg-gradient-to-br from-rose-500/[0.04] to-rose-500/[0.01] border-rose-500/10 hover:border-rose-500/30 text-rose-400/90'
+                            : 'bg-gradient-to-br from-white/[0.04] to-white/[0.01] border-white/5 hover:border-white/10 text-zinc-400'
                         }`}
                 >
-                    <span className="text-xl shrink-0">
-                        {insight.type === 'positive' ? '🚀' : insight.type === 'negative' ? '⚠️' : '💡'}
-                    </span>
-                    <p className="text-sm font-medium leading-relaxed">
+                    <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-xl bg-white/[0.03] border border-white/[0.05] group-hover:border-white/10 transition-all duration-300 shadow-inner">
+                        <span className="text-xl filter drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]">
+                            {insight.type === 'positive' ? '🚀' : insight.type === 'negative' ? '⚠️' : '💡'}
+                        </span>
+                    </div>
+                    <p className="text-sm font-bold leading-relaxed pt-0.5">
                         {insight.text}
                     </p>
                 </div>

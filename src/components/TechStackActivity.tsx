@@ -79,14 +79,14 @@ export default function TechStackActivity({ languages }: TechStackActivityProps)
                     const color = getLanguageColor(lang.name, index);
                     return (
                         <div key={lang.name} className="group">
-                            <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-3">
+                            <div className="flex items-center justify-between mb-2 min-w-0">
+                                <div className="flex items-center gap-3 min-w-0">
                                     <span className="text-xs font-bold text-zinc-600 w-4">#{index + 1}</span>
                                     <div
                                         className="w-2.5 h-2.5 rounded-full shadow-sm"
                                         style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}40` }}
                                     />
-                                    <span className="text-sm font-bold text-zinc-200 group-hover:text-white transition-colors">
+                                    <span className="text-sm font-bold text-zinc-200 group-hover:text-white transition-colors truncate">
                                         {lang.name}
                                     </span>
                                 </div>

@@ -204,22 +204,95 @@ export default function DashboardPage() {
   }, [umami, wakaSummary, activeDays, timeRange]);
 
   // LOADING
-  // Removed strict check on all APIs to allow partial data rendering
   if (!umami && activeDays === null && !wakaSummary) {
     return (
       <main className="min-h-screen bg-zinc-950 text-white selection:bg-blue-500/30 font-sans">
-        <header className="fixed top-0 left-0 right-0 z-40 bg-zinc-950/80 backdrop-blur-md border-b border-white/5 h-16 flex items-center px-6">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">I’m Hafiz</h1>
-            <p className="text-xs text-zinc-500">
-              Personal engineering dashboard & activity insights
-            </p>
+        <header className="fixed top-0 left-0 right-0 z-50 bg-zinc-950/80 backdrop-blur-md border-b border-white/5 h-16 flex items-center px-6">
+          <div className="flex items-center gap-4 w-full max-w-[1600px] mx-auto">
+            <img
+              src="/hafiz21.jpeg"
+              alt="Hafiz"
+              className="w-8 h-8 rounded-full border border-white/10 object-cover"
+            />
+            <div>
+              <h1 className="text-sm font-bold tracking-tight text-white/90">Hafiz Reports</h1>
+              <div className="w-32 h-2 mt-1 rounded-full skeleton" />
+            </div>
+            <div className="ml-auto flex gap-2">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="w-12 h-6 rounded-lg skeleton opacity-50 hidden sm:block" />
+              ))}
+            </div>
           </div>
         </header>
 
         <div className="pt-24 px-6 pb-12 max-w-[1600px] mx-auto">
-          <div className="flex items-center justify-center min-h-[50vh]">
-            <div className="text-zinc-500 font-medium animate-pulse">Loading guyss..</div>
+          {/* HEADER AREA SKELETON */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <div className="space-y-2">
+              <div className="w-48 h-8 rounded-xl skeleton" />
+              <div className="w-32 h-3 rounded-full skeleton opacity-50" />
+            </div>
+            <div className="w-64 h-10 rounded-2xl skeleton" />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {/* LEFT KPIs SKELETON */}
+            <div className="lg:col-span-3 grid grid-cols-1 gap-5">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-zinc-900/40 border border-white/5 rounded-3xl p-6 h-[140px] flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="w-20 h-2 rounded-full skeleton opacity-50" />
+                    <div className="w-24 h-8 rounded-xl skeleton" />
+                  </div>
+                  <div className="w-full h-8 rounded-xl skeleton opacity-20" />
+                </div>
+              ))}
+            </div>
+
+            {/* CHART SKELETON */}
+            <div className="lg:col-span-9 bg-zinc-900/40 border border-white/5 rounded-[var(--radius-dashboard)] p-8 h-[430px] flex flex-col">
+              <div className="flex justify-between items-center mb-8">
+                <div className="w-24 h-4 rounded-full skeleton" />
+                <div className="flex gap-2">
+                  <div className="w-4 h-4 rounded-full skeleton" />
+                  <div className="w-4 h-4 rounded-full skeleton" />
+                </div>
+              </div>
+              <div className="flex-1 w-full rounded-2xl skeleton opacity-20" />
+            </div>
+
+            {/* LOWER GRIDS SKELETON */}
+            <div className="lg:col-span-6 bg-zinc-900/40 border border-white/5 rounded-[var(--radius-dashboard)] p-8 h-[300px]">
+              <div className="w-32 h-4 mb-6 rounded-full skeleton" />
+              <div className="grid grid-cols-7 gap-2 h-40">
+                {Array.from({ length: 28 }).map((_, i) => (
+                  <div key={i} className="rounded-sm skeleton opacity-30" />
+                ))}
+              </div>
+            </div>
+
+            <div className="lg:col-span-6 bg-zinc-900/40 border border-white/5 rounded-[var(--radius-dashboard)] p-8 h-[300px]">
+              <div className="w-32 h-4 mb-6 rounded-full skeleton" />
+              <div className="space-y-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-lg skeleton" />
+                    <div className="flex-1 space-y-2">
+                      <div className="w-1/2 h-3 rounded-full skeleton" />
+                      <div className="w-1/4 h-2 rounded-full skeleton opacity-50" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50">
+            <div className="bg-zinc-900/80 backdrop-blur-xl border border-white/10 px-6 py-3 rounded-full shadow-2xl flex items-center gap-4">
+              <div className="w-4 h-4 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+              <span className="text-sm font-medium text-zinc-300 tracking-wide">Menyiapkan Dashboard...</span>
+            </div>
           </div>
         </div>
       </main>
@@ -271,72 +344,76 @@ export default function DashboardPage() {
           </DashboardCard>
         </div>
 
-        {/* ROW 3: SECONDARY CONTENT */}
-        <DashboardCard id="github" title="Kontribusi GitHub" className="lg:col-span-6">
+        {/* ROW 3: SECONDARY CONTENT (Daily Stats hidden temporarily) */}
+        <DashboardCard id="github" title="" className="lg:col-span-12">
           {gh ? (
             <GithubContributionsHeatmap
               totalContributions={gh.totalContributions}
               weeks={gh.weeks}
             />
           ) : (
-            <div className="flex items-center justify-center h-40 text-zinc-500 font-medium">Loading GitHub…</div>
+            <div className="flex items-center justify-center p-20 h-full text-zinc-500 font-medium bg-zinc-900/20 rounded-3xl border border-white/5">
+              Loading GitHub…
+            </div>
           )}
         </DashboardCard>
 
-        <DashboardCard id="daily" title="Rincian Harian" className="lg:col-span-6">
+        <DashboardCard id="daily" title="" className="lg:col-span-12">
           <DailyStatsGrid data={dailyData} />
         </DashboardCard>
 
         {/* ROW 4: PROJECTS, LANGUAGES & TECH */}
-        <DashboardCard id="projects" title="Proyek Teratas" className="lg:col-span-6">
+        <DashboardCard id="projects" title="Proyek Teratas" className="lg:col-span-7 p-6">
           <ProjectsList data={projectsData} />
         </DashboardCard>
 
-        <DashboardCard id="languages" title="Bahasa Teratas" className="lg:col-span-3">
-          {topLanguages ? (
-            <div className="flex flex-col items-center">
-              <ResponsiveContainer width="100%" height={260}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => (percent ?? 0) > 0.1 ? `${name}` : ""}
-                    outerRadius={80}
-                    dataKey="value"
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-              <p className="mt-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{topLangLabel}</p>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-40 text-zinc-500 font-medium">Loading Languages…</div>
-          )}
-        </DashboardCard>
+        <div className="lg:col-span-5 flex flex-col gap-5">
+          <DashboardCard id="languages" title="Bahasa Teratas" className="flex-1 p-6">
+            {topLanguages ? (
+              <div className="flex flex-col items-center">
+                <ResponsiveContainer width="100%" height={260}>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => (percent ?? 0) > 0.1 ? `${name}` : ""}
+                      outerRadius={80}
+                      dataKey="value"
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+                <p className="mt-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{topLangLabel}</p>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-40 text-zinc-500 font-medium">Loading Languages…</div>
+            )}
+          </DashboardCard>
 
-        <DashboardCard id="tech" className="lg:col-span-3">
-          <TechStackActivity languages={wakaSummary?.topLanguages ?? []} />
-        </DashboardCard>
+          <DashboardCard id="tech" className="flex-1 p-6">
+            <TechStackActivity languages={wakaSummary?.topLanguages ?? []} />
+          </DashboardCard>
+        </div>
 
         {/* ROW 5: INSIGHTS & WEEKLY */}
-        <DashboardCard id="kpi-summary" title="KPI Ringkasan" className="lg:col-span-4 max-h-[500px] overflow-y-auto scrollbar-hide">
+        <DashboardCard id="kpi-summary" title="KPI Ringkasan" className="lg:col-span-4 p-6 overflow-hidden">
           <InsightList insights={insights} />
           {gaSummary && (
             <div className="mt-8 pt-8 border-t border-white/5">
-              <h4 className="text-[10px] font-bold text-zinc-500 uppercase mb-4 tracking-widest">Real-time</h4>
+              <h4 className="text-[10px] font-bold text-zinc-500 uppercase mb-4 tracking-widest px-1">Hari Aktif</h4>
               <div className="grid grid-cols-2 gap-3">
-                <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1">Aktif</p>
+                <div className="p-4 bg-white/[0.03] rounded-2xl border border-white/5 transition-all duration-300 hover:bg-white/[0.05] hover:border-white/10 group/stat">
+                  <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1 group-hover/stat:text-blue-400/70 transition-colors">Aktif</p>
                   <p className="text-xl font-black text-white">{gaSummary.activeUsers || 0}</p>
                 </div>
-                <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1">Views</p>
+                <div className="p-4 bg-white/[0.03] rounded-2xl border border-white/5 transition-all duration-300 hover:bg-white/[0.05] hover:border-white/10 group/stat">
+                  <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1 group-hover/stat:text-blue-400/70 transition-colors">Views</p>
                   <p className="text-xl font-black text-white">{gaSummary.screenPageViews || 0}</p>
                 </div>
               </div>

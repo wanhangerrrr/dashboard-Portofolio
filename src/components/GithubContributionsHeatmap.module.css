@@ -59,10 +59,12 @@
 .grid::-webkit-scrollbar {
   height: 8px;
 }
+
 .grid::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--muted) 25%, transparent);
   border-radius: 999px;
 }
+
 .grid::-webkit-scrollbar-track {
   background: transparent;
 }

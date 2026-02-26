@@ -14,76 +14,90 @@ interface DailyStatsGridProps {
 export default function DailyStatsGrid({ data }: DailyStatsGridProps) {
     if (!data?.data || data.data.length === 0) {
         return (
-            <div className="flex items-center justify-center h-full p-12 text-zinc-600 bg-white/5 rounded-[2rem] border border-dashed border-white/10">
+            <div className="flex items-center justify-center p-20 min-h-[350px] rounded-[2.5rem] border border-dashed border-white/10 bg-zinc-900/20 text-zinc-600 font-medium">
                 Tidak ada aktivitas yang tercatat
             </div>
         );
     }
 
     return (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {data.data.slice(0, 8).map((day, i) => {
-                const isActive = day.grand_total.total_seconds > 0;
-                const dateObj = new Date(day.range.date);
-                const isToday = new Date().toDateString() === dateObj.toDateString();
+        <div className="flex flex-col p-8 md:p-12 min-h-[350px] rounded-[2.5rem] border border-white/5 bg-gradient-to-br from-zinc-900/40 to-zinc-900/10 backdrop-blur-2xl shadow-2xl transition-all duration-500 hover:border-amber-500/20 group overflow-hidden">
+            {/* Header Info */}
+            <div className="flex justify-between items-start mb-10 px-2">
+                <div className="flex flex-col gap-2">
+                    <span className="text-xs font-black text-zinc-500 tracking-[0.4em] uppercase transition-colors duration-500 group-hover:text-amber-400/80">
+                        RINCIAN HARIAN
+                    </span>
+                    <div className="w-12 h-1 bg-amber-500/20 rounded-full transition-all duration-500 group-hover:w-24 group-hover:bg-amber-500/40" />
+                </div>
+                <div className="flex flex-col items-end">
+                    <span className="text-4xl font-black text-white tracking-tighter leading-none transition-colors duration-500 group-hover:text-amber-400">
+                        {data.data.length}
+                    </span>
+                    <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mt-2">
+                        Days Tracked
+                    </span>
+                </div>
+            </div>
 
-                return (
-                    <div
-                        key={i}
-                        className={`group relative flex flex-col p-4 rounded-3xl border transition-all duration-300 
-                            bg-zinc-900/40 border-white/5 hover:border-blue-500/30 hover:bg-zinc-900/60 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-500/5
-                            ${isToday ? "ring-1 ring-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.15)]" : ""}
-                        `}
-                    >
-                        {/* Header: Date */}
-                        <div className="flex justify-between items-start mb-4">
-                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-tight">
-                                {dateObj.toLocaleDateString("id-ID", { weekday: 'long' })}
-                            </span>
-                            <div className="flex flex-col items-end leading-none">
-                                <span className={`text-xs font-bold ${isToday ? "text-blue-400" : "text-zinc-400"}`}>
-                                    {dateObj.getDate()}
-                                </span>
-                                <span className="text-[8px] font-medium text-zinc-600 uppercase mt-0.5">
-                                    {dateObj.toLocaleDateString("id-ID", { month: 'short' })}
-                                </span>
-                            </div>
-                        </div>
+            {/* Daily Stats Vertical List */}
+            <div className="relative mt-auto">
+                <div className="flex flex-col gap-3">
+                    {data.data.slice(0, 7).map((day, i) => {
+                        const dateObj = new Date(day.range.date);
+                        const isToday = new Date().toDateString() === dateObj.toDateString();
 
-                        {/* Main: Time */}
-                        <div className="mb-4">
-                            <span className="text-2xl font-black tracking-tight text-white">
-                                {day.grand_total.digital}
-                            </span>
-                            <span className="block text-[9px] font-medium text-zinc-600 mt-1 whitespace-nowrap">
-                                Total Waktu Coding
-                            </span>
-                        </div>
+                        return (
+                            <div
+                                key={i}
+                                className={`flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 
+                                    ${isToday
+                                        ? "bg-amber-500/10 border-amber-500/30 ring-1 ring-amber-500/10"
+                                        : "bg-zinc-900/40 border-white/5 hover:border-amber-500/20 hover:bg-zinc-900/60"
+                                    }
+                                `}
+                            >
+                                <div className="flex items-center gap-6">
+                                    <div className="flex flex-col min-w-[80px]">
+                                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-none">
+                                            {dateObj.toLocaleDateString("id-ID", { weekday: 'short' })}
+                                        </span>
+                                        <span className={`text-lg font-black mt-1 ${isToday ? "text-amber-400" : "text-zinc-400"}`}>
+                                            {dateObj.getDate()} {dateObj.toLocaleDateString("id-ID", { month: 'short' })}
+                                        </span>
+                                    </div>
 
-                        {/* Footer: Details */}
-                        <div className="mt-auto space-y-1.5 pt-3 border-t border-white/5">
-                            <div className="flex items-center justify-between text-[10px]">
-                                <span className="text-zinc-500 font-medium">Proyek</span>
-                                <div className="flex items-center gap-1.5">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${day.projects.length > 0 ? "bg-blue-500" : "bg-zinc-800"}`} />
-                                    <span className={`font-bold ${day.projects.length > 0 ? "text-zinc-300" : "text-zinc-600"}`}>
-                                        {day.projects.length}
-                                    </span>
+                                    <div className="h-8 w-px bg-white/5" />
+
+                                    <div className="flex flex-col">
+                                        <span className="text-lg font-black text-white leading-none">
+                                            {day.grand_total.digital}
+                                        </span>
+                                        <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-wide mt-1">
+                                            Coding Time
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-4 md:gap-8">
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-sm font-black text-zinc-300 leading-none">
+                                            {day.projects.length}
+                                        </span>
+                                        <span className="text-[8px] md:text-[9px] font-medium text-zinc-600 uppercase mt-1">Proyek</span>
+                                    </div>
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-sm font-black text-zinc-300 leading-none">
+                                            {day.languages.length}
+                                        </span>
+                                        <span className="text-[8px] md:text-[9px] font-medium text-zinc-600 uppercase mt-1">Bahasa</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="flex items-center justify-between text-[10px]">
-                                <span className="text-zinc-500 font-medium">Bahasa</span>
-                                <div className="flex items-center gap-1.5">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${day.languages.length > 0 ? "bg-amber-500" : "bg-zinc-800"}`} />
-                                    <span className={`font-bold ${day.languages.length > 0 ? "text-zinc-300" : "text-zinc-600"}`}>
-                                        {day.languages.length}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                );
-            })}
+                        );
+                    })}
+                </div>
+            </div>
         </div>
     );
 }
