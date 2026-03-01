@@ -37,34 +37,41 @@
 
 .grid {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   overflow-x: auto;
-  padding-bottom: 8px;
+  padding-bottom: 20px;
+  /* Space for scrollbar */
+  padding-right: 20px;
+  /* Space for mask padding */
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 
 .week {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
+  flex-shrink: 0;
 }
 
-.day {
-  width: 12px;
-  height: 12px;
-  border-radius: 4px;
-  outline: 1px solid var(--border);
-}
-
-/* scrollbars biar lebih modern */
+/* modern scrollbar */
 .grid::-webkit-scrollbar {
-  height: 8px;
-}
-
-.grid::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--muted) 25%, transparent);
-  border-radius: 999px;
+  height: 6px;
 }
 
 .grid::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
+}
+
+.grid::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.2);
+  /* blue-500/20 */
+  border-radius: 10px;
+  transition: background 0.3s;
+}
+
+.grid:hover::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.4);
+  /* blue-500/40 */
 }

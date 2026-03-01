@@ -43,10 +43,10 @@ export default function GithubContributionsHeatmap({
 
         <div className="relative overflow-hidden rounded-xl">
           <div
-            className="flex gap-[5px] overflow-x-auto pb-4 scrollbar-hide"
+            className={`flex gap-[5px] overflow-x-auto pb-4 touch-pan-x ${styles.grid}`}
           >
             {weeks.map((w, wi) => (
-              <div key={wi} className="flex flex-col gap-[5px] flex-shrink-0">
+              <div key={wi} className={styles.week}>
                 {w.contributionDays.map((d) => (
                   <div
                     key={d.date}
@@ -61,6 +61,7 @@ export default function GithubContributionsHeatmap({
               </div>
             ))}
           </div>
+
 
           {/* Subtle Gradient Mask to indicate more content */}
           <div className="absolute right-0 top-0 bottom-4 w-12 bg-gradient-to-l from-zinc-950/40 to-transparent pointer-events-none" />

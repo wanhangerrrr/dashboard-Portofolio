@@ -120,6 +120,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               sum + (d?.grand_total?.total_seconds ?? 0),
             0
           );
+
+          startDate = days[0]?.range?.date ?? null;
+          endDate = days[days.length - 1]?.range?.date ?? null;
+        }
+
+        // Always try to find/update best day from API data if it represents a longer range or if not set
+        for (const d of days) {
+          const sec = d?.grand_total?.total_seconds ?? 0;
+          if (sec <= 0) continue;
+
+          const candidate = {
+            date: d?.range?.date ?? "",
+            seconds: sec,
+            digital: d?.grand_total?.digital ?? "",
+          };
+
+          if (!best || candidate.seconds > best.seconds) best = candidate;
         }
       }
     }

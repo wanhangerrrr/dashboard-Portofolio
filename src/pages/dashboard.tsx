@@ -4,6 +4,9 @@ import PortfolioAnalyticsChart from "../components/PortfolioAnalyticsChart";
 import GithubContributionsHeatmap from "../components/GithubContributionsHeatmap";
 import WeeklySummary from "../components/WeeklySummary";
 import TechStackActivity from "../components/TechStackActivity";
+import EditorsCard from "../components/EditorsCard";
+import WeekdaysChart from "../components/WeekdaysChart";
+import DailyActivityGauge from "../components/DailyActivityGauge";
 import LayoutShell from "../components/layout/LayoutShell";
 import TopHeader from "../components/layout/TopHeader";
 import DashboardGrid from "../components/dashboard/DashboardGrid";
@@ -130,6 +133,7 @@ export default function DashboardPage() {
   const [gh, setGh] = useState<GithubCalendar | null>(null);
   const [wakaSummary, setWakaSummary] = useState<WakaTimeSummary | null>(null);
   const [topLanguages, setTopLanguages] = useState<TopLanguages | null>(null);
+  const [editorsData, setEditorsData] = useState<any>(null);
   const [dailyData, setDailyData] = useState<WakaTimeDaily | null>(null);
   const [projectsData, setProjectsData] = useState<WakaTimeProjects | null>(null);
   const [gaSummary, setGaSummary] = useState<any>(null);
@@ -161,6 +165,7 @@ export default function DashboardPage() {
     safeFetch<TopLanguages>(`/api/top-languages${query}`, (l) => setTopLanguages(l));
     safeFetch<WakaTimeDaily>(`/api/wakatime-daily${query}`, (d) => setDailyData(d));
     safeFetch<WakaTimeProjects>(`/api/wakatime-projects${query}`, (p) => setProjectsData(p));
+    safeFetch<any>(`/api/wakatime-editors${query}`, (e) => setEditorsData(e));
     safeFetch<any>(`/api/ga4/summary${query}`, (g) => setGaSummary(g));
   }, [timeRange]);
 
@@ -362,70 +367,80 @@ export default function DashboardPage() {
           <DailyStatsGrid data={dailyData} />
         </DashboardCard>
 
-        {/* ROW 4: PROJECTS, LANGUAGES & TECH */}
-        <DashboardCard id="projects" title="Proyek Teratas" className="lg:col-span-7 p-6">
-          <ProjectsList data={projectsData} />
-        </DashboardCard>
-
-        <div className="lg:col-span-5 flex flex-col gap-5">
-          <DashboardCard id="languages" title="Bahasa Teratas" className="flex-1 p-6">
-            {topLanguages ? (
-              <div className="flex flex-col items-center">
-                <ResponsiveContainer width="100%" height={260}>
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => (percent ?? 0) > 0.1 ? `${name}` : ""}
-                      outerRadius={80}
-                      dataKey="value"
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-                <p className="mt-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{topLangLabel}</p>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-40 text-zinc-500 font-medium">Loading Languages…</div>
-            )}
+        {/* ROW 4: PROJECTS, LANGUAGES & EDITORS (LEFT) | TECH STACK (RIGHT) */}
+        <div className="lg:col-span-7 flex flex-col gap-5">
+          <DashboardCard id="projects" title="Proyek Teratas" className="p-6">
+            <ProjectsList data={projectsData} />
           </DashboardCard>
 
-          <DashboardCard id="tech" className="flex-1 p-6">
+          {/* Languages & Editors Side-by-Side below projects */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <DashboardCard id="languages" title="Bahasa Teratas" className="p-6">
+              {topLanguages ? (
+                <div className="flex flex-col items-center justify-center h-full text-center">
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => (percent ?? 0) > 0.1 ? `${name}` : ""}
+                        outerRadius={70}
+                        dataKey="value"
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <p className="mt-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{topLangLabel}</p>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-40 text-zinc-500 font-medium">Loading Languages…</div>
+              )}
+            </DashboardCard>
+
+            <DashboardCard id="editors" className="p-6">
+              <EditorsCard data={editorsData?.data ?? []} />
+            </DashboardCard>
+          </div>
+        </div>
+
+        {/* Right Column: Tech Stack Activity */}
+        <div className="lg:col-span-5">
+          <DashboardCard id="tech" className="h-full p-6">
             <TechStackActivity languages={wakaSummary?.topLanguages ?? []} />
           </DashboardCard>
         </div>
 
         {/* ROW 5: INSIGHTS & WEEKLY */}
         <DashboardCard id="kpi-summary" title="KPI Ringkasan" className="lg:col-span-4 p-6 overflow-hidden">
-          <InsightList insights={insights} />
-          {gaSummary && (
-            <div className="mt-8 pt-8 border-t border-white/5">
-              <h4 className="text-[10px] font-bold text-zinc-500 uppercase mb-4 tracking-widest px-1">Hari Aktif</h4>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-4 bg-white/[0.03] rounded-2xl border border-white/5 transition-all duration-300 hover:bg-white/[0.05] hover:border-white/10 group/stat">
-                  <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1 group-hover/stat:text-blue-400/70 transition-colors">Aktif</p>
-                  <p className="text-xl font-black text-white">{gaSummary.activeUsers || 0}</p>
-                </div>
-                <div className="p-4 bg-white/[0.03] rounded-2xl border border-white/5 transition-all duration-300 hover:bg-white/[0.05] hover:border-white/10 group/stat">
-                  <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1 group-hover/stat:text-blue-400/70 transition-colors">Views</p>
-                  <p className="text-xl font-black text-white">{gaSummary.screenPageViews || 0}</p>
-                </div>
-              </div>
+          <div className="flex flex-col gap-8">
+            <DailyActivityGauge
+              todaySeconds={dailyData?.data?.find(d => new Date(d.range.date).toDateString() === new Date().toDateString())?.grand_total?.total_seconds || 0}
+              dailyAverageSeconds={wakaSummary?.averageDaily?.seconds || 1}
+              bestDayDate={wakaSummary?.bestDay?.date || ""}
+              bestDaySeconds={wakaSummary?.bestDay?.seconds || 0}
+            />
+            <div className="pt-8 border-t border-white/5">
+              <InsightList insights={insights} />
             </div>
-          )}
+          </div>
         </DashboardCard>
 
         <DashboardCard id="weekly" title="Ringkasan Mingguan" className="lg:col-span-8">
-          <WeeklySummary
-            totalSeconds={wakaSummary?.total?.seconds ?? 0}
-            activeDays={activeDays ?? 0}
-          />
+          <div className="flex flex-col gap-12">
+            <WeeklySummary
+              totalSeconds={wakaSummary?.total?.seconds ?? 0}
+              activeDays={activeDays ?? 0}
+            />
+            <div className="pt-8 border-t border-white/5">
+              <WeekdaysChart data={dailyData} />
+            </div>
+          </div>
         </DashboardCard>
       </DashboardGrid>
 
