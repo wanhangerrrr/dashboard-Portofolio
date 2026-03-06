@@ -24,13 +24,6 @@ function addDaysUTC(d: Date, days: number) {
  * start = hari ini - 7 (00:00 UTC)
  * end   = kemarin (00:00 UTC)
  */
-function getLast7DaysFromYesterdayRange() {
-  const todayUTC = startOfDayUTC(new Date());
-  const end = addDaysUTC(todayUTC, -1);
-  const start = addDaysUTC(todayUTC, -7);
-  return { start, end };
-}
-
 /** =======================
  *  Types (minimal)
  *  ======================= */
@@ -66,18 +59,40 @@ type GitHubGraphQLResponse = {
 };
 
 /** =======================
+ *  Helpers (date range)
+ *  ======================= */
+function getRangeFromQuery(range?: string | string[]) {
+  const todayUTC = startOfDayUTC(new Date());
+  const end = addDaysUTC(todayUTC, -1);
+  let start = addDaysUTC(todayUTC, -7);
+
+  if (range === "30D") {
+    start = addDaysUTC(todayUTC, -30);
+  } else if (range === "90D") {
+    start = addDaysUTC(todayUTC, -90);
+  } else if (range === "all") {
+    start = new Date("2000-01-01"); // Effectively "all time" for queries
+  }
+
+  return { start, end };
+}
+
+/** =======================
  *  WakaTime (primary)
  *  ======================= */
-async function getActiveDaysFromWakaTime(): Promise<number> {
+async function getActiveDaysFromWakaTime(range?: string | string[]): Promise<number> {
   const apiKey = process.env.WAKATIME_API_KEY;
   if (!apiKey) throw new Error("Missing WAKATIME_API_KEY");
 
   const auth = Buffer.from(`${apiKey}:`).toString("base64");
-  const { start, end } = getLast7DaysFromYesterdayRange();
+  const { start, end } = getRangeFromQuery(range);
 
-  const url =
-    `https://wakatime.com/api/v1/users/current/summaries` +
-    `?start=${toISODate(start)}&end=${toISODate(end)}`;
+  let url = "";
+  if (range === "all") {
+    url = `https://wakatime.com/api/v1/users/current/summaries?range=all_time`;
+  } else {
+    url = `https://wakatime.com/api/v1/users/current/summaries?start=${toISODate(start)}&end=${toISODate(end)}`;
+  }
 
   const r = await fetch(url, { headers: { Authorization: `Basic ${auth}` } });
   if (!r.ok) throw new Error(`WakaTime error ${r.status}`);
@@ -94,13 +109,61 @@ async function getActiveDaysFromWakaTime(): Promise<number> {
 /** =======================
  *  GitHub
  *  ======================= */
-async function getActiveDaysFromGitHub(): Promise<number> {
+async function getActiveDaysFromGitHub(range?: string | string[]): Promise<number> {
   const username = process.env.GITHUB_USERNAME;
   if (!username) throw new Error("Missing GITHUB_USERNAME");
 
   const token = process.env.GITHUB_TOKEN; // optional
-  const { start, end } = getLast7DaysFromYesterdayRange();
+  const { start, end } = getRangeFromQuery(range);
 
+  if (range === "all") {
+    // Get all years
+    const yearsQuery = `query($login: String!) { user(login: $login) { contributionsCollection { contributionYears } } }`;
+    const yrRes = await fetch("https://api.github.com/graphql", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ query: yearsQuery, variables: { login: username } }),
+    });
+    const yrJson = await yrRes.json();
+    const years: number[] = yrJson.data?.user?.contributionsCollection?.contributionYears ?? [];
+
+    // Fetch each year's active days
+    const promises = years.map(year => {
+      const from = `${year}-01-01T00:00:00Z`;
+      const to = `${year}-12-31T23:59:59Z`;
+      const q = `
+        query($login: String!, $from: DateTime!, $to: DateTime!) {
+          user(login: $login) {
+            contributionsCollection(from: $from, to: $to) {
+              contributionCalendar {
+                weeks {
+                  contributionDays {
+                    contributionCount
+                  }
+                }
+              }
+            }
+          }
+        }
+      `;
+      return fetch("https://api.github.com/graphql", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ query: q, variables: { login: username, from, to } }),
+      }).then(r => r.json());
+    });
+
+    const results = await Promise.all(promises);
+    let totalActiveDays = 0;
+    results.forEach(res => {
+      const weeks = res.data?.user?.contributionsCollection?.contributionCalendar?.weeks ?? [];
+      const days = weeks.flatMap((w: any) => w.contributionDays ?? []);
+      totalActiveDays += days.reduce((acc: number, d: any) => acc + (d.contributionCount > 0 ? 1 : 0), 0);
+    });
+    return totalActiveDays;
+  }
+
+  // Single range fetch
   const query = `
     query($login: String!, $from: DateTime!, $to: DateTime!) {
       user(login: $login) {
@@ -108,7 +171,6 @@ async function getActiveDaysFromGitHub(): Promise<number> {
           contributionCalendar {
             weeks {
               contributionDays {
-                date
                 contributionCount
               }
             }
@@ -137,8 +199,6 @@ async function getActiveDaysFromGitHub(): Promise<number> {
   if (!r.ok) throw new Error("GitHub error " + r.status);
 
   const json = (await r.json()) as GitHubGraphQLResponse;
-  if (json.errors) throw new Error("GitHub GraphQL returned errors");
-
   const weeks = json.data?.user?.contributionsCollection?.contributionCalendar?.weeks ?? [];
   const days: GitHubContributionDay[] = weeks.flatMap((w) => w.contributionDays ?? []);
 
@@ -185,32 +245,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   res.setHeader("Cache-Control", "no-store");
 
-  const { start, end } = getLast7DaysFromYesterdayRange();
+  const { range } = req.query;
+  const { start, end } = getRangeFromQuery(range);
 
-  let codingDays = 0;
-  let codingSource: "wakatime" | "github" | "none" = "none";
+  let wDays = 0;
+  let gDays = 0;
   let wakatimeError: string | null = null;
   let githubError: string | null = null;
 
   try {
-    const w = await getActiveDaysFromWakaTime();
-    if (w > 0) {
-      codingDays = w;
-      codingSource = "wakatime";
-    } else {
-      throw new Error("WakaTime returned 0");
-    }
+    wDays = await getActiveDaysFromWakaTime(range);
   } catch (e) {
     wakatimeError = String(e);
-    try {
-      const g = await getActiveDaysFromGitHub();
-      codingDays = g;
-      codingSource = "github";
-    } catch (e2) {
-      githubError = String(e2);
-      codingDays = 0;
-      codingSource = "none";
-    }
+  }
+
+  try {
+    gDays = await getActiveDaysFromGitHub(range);
+  } catch (e) {
+    githubError = String(e);
+  }
+
+  const codingDays = Math.max(wDays, gDays);
+  let codingSource: "wakatime" | "github" | "none" = "none";
+  if (codingDays > 0) {
+    codingSource = wDays >= gDays ? "wakatime" : "github";
   }
 
   let umamiDays: number | null = null;

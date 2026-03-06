@@ -16,6 +16,9 @@ import TimeRangeSelector from "../components/dashboard/TimeRangeSelector";
 import InsightList from "../components/dashboard/InsightList";
 import DailyStatsGrid from "../components/dashboard/DailyStatsGrid";
 import ProjectsList from "../components/dashboard/ProjectsList";
+import LiveStatus from "../components/dashboard/LiveStatus";
+import RealTimeActivityCard from "../components/dashboard/RealTimeActivityCard";
+import ProductiveHourCard from "../components/dashboard/ProductiveHourCard";
 // import styles from "./dashboard.module.css";
 import { generateInsights, Insight } from "../lib/InsightEngine";
 
@@ -80,6 +83,15 @@ type WakaTimeDaily = {
   cumulative_total: { seconds: number; text: string; digital: string };
 };
 
+type WakaTimeAllTime = {
+  total_seconds: number;
+  text: string;
+  digital: string;
+  decimal: string;
+  average_daily_seconds: number;
+  start_date: string;
+};
+
 type WakaTimeProjects = {
   data: {
     name: string;
@@ -132,6 +144,7 @@ export default function DashboardPage() {
   const [activeDays, setActiveDays] = useState<number | null>(null);
   const [gh, setGh] = useState<GithubCalendar | null>(null);
   const [wakaSummary, setWakaSummary] = useState<WakaTimeSummary | null>(null);
+  const [wakaAllTime, setWakaAllTime] = useState<WakaTimeAllTime | null>(null);
   const [topLanguages, setTopLanguages] = useState<TopLanguages | null>(null);
   const [editorsData, setEditorsData] = useState<any>(null);
   const [dailyData, setDailyData] = useState<WakaTimeDaily | null>(null);
@@ -167,6 +180,7 @@ export default function DashboardPage() {
     safeFetch<WakaTimeProjects>(`/api/wakatime-projects${query}`, (p) => setProjectsData(p));
     safeFetch<any>(`/api/wakatime-editors${query}`, (e) => setEditorsData(e));
     safeFetch<any>(`/api/ga4/summary${query}`, (g) => setGaSummary(g));
+    safeFetch<WakaTimeAllTime>(`/api/wakatime-all-time`, (a) => setWakaAllTime(a));
   }, [timeRange]);
 
   // Polling for auto-update every 5 minutes
@@ -197,16 +211,7 @@ export default function DashboardPage() {
   const pieData = topLanguages ? Object.entries(topLanguages).map(([name, bytes]) => ({ name, value: bytes })) : [];
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
-  const insights: Insight[] = useMemo(() => {
-    if (!umami || !wakaSummary?.total) return [];
-    return generateInsights({
-      pageviews: Array.isArray(umami.trend?.pageviews) ? umami.trend.pageviews : [],
-      sessions: Array.isArray(umami.trend?.sessions) ? umami.trend.sessions : [],
-      codingDays: activeDays ?? 0,
-      totalCodingSeconds: wakaSummary.total.seconds ?? 0,
-      timeRange: timeRange
-    });
-  }, [umami, wakaSummary, activeDays, timeRange]);
+  // Removed InsightList in favor of RealTimeActivityCard
 
   // LOADING
   if (!umami && activeDays === null && !wakaSummary) {
@@ -324,14 +329,18 @@ export default function DashboardPage() {
               </span>
               <span className="hidden md:inline">Laporan</span>
             </h2>
+            <div className="mt-1 flex items-center gap-2">
+              <LiveStatus />
+            </div>
           </div>
           <TimeRangeSelector currentRange={timeRange} onRangeChange={setTimeRange} />
         </div>
 
         {/* ROW 2: PRIMARY GRID (LEFT KPIs + RIGHT CHART) */}
-        <div className="lg:col-span-12 grid grid-cols-1 lg:grid-cols-4 gap-5">
-          {/* LEFT: STACKED KPIs */}
-          <div className="lg:col-span-1 grid grid-cols-1 gap-5">
+        <div className="lg:col-span-12 grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-5">
+          {/* LEFT: STACKED KPIs (Grid 2 cols on mobile) */}
+          <div className="lg:col-span-1 grid grid-cols-2 lg:grid-cols-1 gap-4 lg:gap-5">
+            <MetricCard label="Total Coding Time (All Time)" value={wakaAllTime?.digital ?? "—"} trend={`Avg: ${formatHours(wakaAllTime?.average_daily_seconds ?? 0)}/day`} />
             <MetricCard label="Pengunjung" value={visitors} trend="+12%" />
             <MetricCard label="Sesi" value={umami?.totals?.visits ?? 0} trend="+5%" />
             <MetricCard label="Hari Coding" value={activeDays ?? 0} trend="+2" />
@@ -368,13 +377,13 @@ export default function DashboardPage() {
         </DashboardCard>
 
         {/* ROW 4: PROJECTS, LANGUAGES & EDITORS (LEFT) | TECH STACK (RIGHT) */}
-        <div className="lg:col-span-7 flex flex-col gap-5">
+        <div className="lg:col-span-7 flex flex-col gap-4 lg:gap-5">
           <DashboardCard id="projects" title="Proyek Teratas" className="p-6">
             <ProjectsList data={projectsData} />
           </DashboardCard>
 
           {/* Languages & Editors Side-by-Side below projects */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-5">
             <DashboardCard id="languages" title="Bahasa Teratas" className="p-6">
               {topLanguages ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">
@@ -418,15 +427,25 @@ export default function DashboardPage() {
 
         {/* ROW 5: INSIGHTS & WEEKLY */}
         <DashboardCard id="kpi-summary" title="KPI Ringkasan" className="lg:col-span-4 p-6 overflow-hidden">
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-6 lg:gap-8">
             <DailyActivityGauge
-              todaySeconds={dailyData?.data?.find(d => new Date(d.range.date).toDateString() === new Date().toDateString())?.grand_total?.total_seconds || 0}
-              dailyAverageSeconds={wakaSummary?.averageDaily?.seconds || 1}
+              todaySeconds={dailyData?.data?.find(d => {
+                const dayDate = new Date(d.range.date);
+                const localToday = new Date();
+                return dayDate.getDate() === localToday.getDate() &&
+                  dayDate.getMonth() === localToday.getMonth() &&
+                  dayDate.getFullYear() === localToday.getFullYear();
+              })?.grand_total?.total_seconds || 0}
+              dailyAverageSeconds={timeRange === "all" ? (wakaAllTime?.average_daily_seconds || 1) : (wakaSummary?.averageDaily?.seconds || 1)}
               bestDayDate={wakaSummary?.bestDay?.date || ""}
               bestDaySeconds={wakaSummary?.bestDay?.seconds || 0}
             />
-            <div className="pt-8 border-t border-white/5">
-              <InsightList insights={insights} />
+            <div className="pt-8 border-t border-white/5 pb-8">
+              <ProductiveHourCard />
+            </div>
+            <div className="pt-8 border-t border-white/5 pb-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-6">Aktivitas Real-time</p>
+              <RealTimeActivityCard />
             </div>
           </div>
         </DashboardCard>
@@ -434,8 +453,10 @@ export default function DashboardPage() {
         <DashboardCard id="weekly" title="Ringkasan Mingguan" className="lg:col-span-8">
           <div className="flex flex-col gap-12">
             <WeeklySummary
-              totalSeconds={wakaSummary?.total?.seconds ?? 0}
+              totalSeconds={timeRange === "all" && wakaAllTime ? wakaAllTime.total_seconds : (wakaSummary?.total?.seconds ?? 0)}
               activeDays={activeDays ?? 0}
+              isAllTime={timeRange === "all"}
+              averageDailySeconds={wakaAllTime?.average_daily_seconds}
             />
             <div className="pt-8 border-t border-white/5">
               <WeekdaysChart data={dailyData} />

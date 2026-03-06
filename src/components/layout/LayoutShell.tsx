@@ -28,7 +28,7 @@ export default function LayoutShell({ children }: LayoutShellProps) {
                 setIsOpen={setIsSidebarOpen}
             />
 
-            <div className="flex-1 lg:pl-[280px]">
+            <div className="flex-1">
                 {React.Children.map(children, (child) => {
                     if (React.isValidElement(child) && (child.type as any).name === 'TopHeader') {
                         return React.cloneElement(child as React.ReactElement<any>, {

@@ -5,6 +5,8 @@ type WeeklySummaryProps = {
     activeDays: number;
     previousWeekSeconds?: number;
     previousWeekActiveDays?: number;
+    isAllTime?: boolean;
+    averageDailySeconds?: number;
 };
 
 function formatHours(seconds: number): string {
@@ -59,6 +61,8 @@ export default function WeeklySummary({
     activeDays,
     previousWeekSeconds,
     previousWeekActiveDays,
+    isAllTime,
+    averageDailySeconds,
 }: WeeklySummaryProps) {
     const timeChange = calculateChange(totalSeconds, previousWeekSeconds ?? 0);
     const daysChange = calculateChange(activeDays, previousWeekActiveDays ?? 0);
@@ -83,9 +87,13 @@ export default function WeeklySummary({
                     <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/[0.03] border border-white/[0.05] shadow-inner">
                         <span className="text-xl">📊</span>
                     </div>
-                    <h2 className="text-xl font-black text-white tracking-tight">Ringkasan Mingguan</h2>
+                    <h2 className="text-xl font-black text-white tracking-tight">
+                        {isAllTime ? "Ringkasan Keseluruhan" : "Ringkasan Mingguan"}
+                    </h2>
                 </div>
-                <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest hidden sm:block">7 hari terakhir</span>
+                <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest hidden sm:block">
+                    {isAllTime ? "Seluruh Waktu" : "7 hari terakhir"}
+                </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -98,10 +106,12 @@ export default function WeeklySummary({
                     </div>
                     <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest group-hover:text-blue-400/80 transition-colors">Total Waktu</div>
                     <div className="text-5xl font-black text-white tracking-tighter leading-none group-hover:text-blue-400 transition-colors">{formatHours(totalSeconds)}</div>
-                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-bold w-fit transition-all duration-300 ${getTrendClass(timeChange.direction)}`}>
-                        <span>{getTrendIcon(timeChange.direction)}</span>
-                        <span>{timeChange.direction === "neutral" ? "Tanpa data pembanding" : `${timeChange.percent}% vs lalu`}</span>
-                    </div>
+                    {!isAllTime && (
+                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-bold w-fit transition-all duration-300 ${getTrendClass(timeChange.direction)}`}>
+                            <span>{getTrendIcon(timeChange.direction)}</span>
+                            <span>{timeChange.direction === "neutral" ? "Tanpa data pembanding" : `${timeChange.percent}% vs lalu`}</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Active Coding Days */}
@@ -113,10 +123,12 @@ export default function WeeklySummary({
                     </div>
                     <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest group-hover:text-blue-400/80 transition-colors">Hari Aktif</div>
                     <div className="text-5xl font-black text-white tracking-tighter leading-none group-hover:text-blue-400 transition-colors">{activeDays} <span className="text-lg font-bold text-zinc-500 lowercase ml-1">hari</span></div>
-                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-bold w-fit transition-all duration-300 ${getTrendClass(daysChange.direction)}`}>
-                        <span>{getTrendIcon(daysChange.direction)}</span>
-                        <span>{daysChange.direction === "neutral" ? "Tanpa data pembanding" : `${daysChange.percent}% vs lalu`}</span>
-                    </div>
+                    {!isAllTime && (
+                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-bold w-fit transition-all duration-300 ${getTrendClass(daysChange.direction)}`}>
+                            <span>{getTrendIcon(daysChange.direction)}</span>
+                            <span>{daysChange.direction === "neutral" ? "Tanpa data pembanding" : `${daysChange.percent}% vs lalu`}</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Average Daily */}
@@ -127,7 +139,9 @@ export default function WeeklySummary({
                         </svg>
                     </div>
                     <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest group-hover:text-blue-400/80 transition-colors">Rata-rata/Hari</div>
-                    <div className="text-5xl font-black text-white tracking-tighter leading-none group-hover:text-blue-400 transition-colors">{formatHours(Math.round(totalSeconds / 7))}</div>
+                    <div className="text-5xl font-black text-white tracking-tighter leading-none group-hover:text-blue-400 transition-colors">
+                        {formatHours(isAllTime && averageDailySeconds ? averageDailySeconds : Math.round(totalSeconds / 7))}
+                    </div>
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/5 bg-white/5 text-zinc-500 text-[10px] font-bold w-fit">
                         <span>→</span>
                         <span>Daily Average</span>

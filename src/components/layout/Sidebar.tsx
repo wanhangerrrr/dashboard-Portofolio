@@ -72,7 +72,7 @@ export default function Sidebar({ items, isOpen, setIsOpen }: SidebarProps) {
 
             {/* Sidebar Shell */}
             <aside
-                className={`fixed top-0 left-0 bottom-0 z-50 w-[280px] bg-zinc-950 border-r border-white/5 
+                className={`fixed lg:sticky top-0 left-0 lg:left-auto lg:bottom-auto bottom-0 z-50 w-[280px] h-screen bg-zinc-950 border-r border-white/5 
                 transition-transform duration-300 ease-in-out lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"
                     }`}
             >
