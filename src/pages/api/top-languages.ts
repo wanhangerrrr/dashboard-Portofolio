@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const repo = 'wanhangerrrr/dashboard-Portofolio'; // Ganti dengan username dan nama repositori Anda
+  const repo = 'MuhammadHafizFassya21/dashboard-Portofolio'; // Ganti dengan username dan nama repositori Anda
   const url = `https://api.github.com/repos/${repo}/languages`;
 
   const response = await fetch(url);
